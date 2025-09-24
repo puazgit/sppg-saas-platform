@@ -1,0 +1,3177 @@
+// SPPG SaaS Platform - Clean Prisma Schema
+// Sistem Manajemen SPPG (Satuan Pelayanan Pemenuhan Gizi)
+// Focus: Menu Planning → Procurement → Production → Distribution → Reporting
+// Clean English schema with Indonesian business context in comments
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================ ENUMS ================================
+
+enum SppgStatus {
+  PENDING_APPROVAL    // Menunggu Persetujuan
+  ACTIVE             // Aktif
+  SUSPENDED          // Ditangguhkan
+  TERMINATED         // Dihentikan
+  INACTIVE           // Nonaktif
+}
+
+enum SubscriptionStatus {
+  TRIAL              // Uji Coba
+  ACTIVE             // Aktif
+  OVERDUE            // Terlambat Bayar
+  CANCELLED          // Dibatalkan
+  PAUSED             // Dijeda
+  UPGRADE_PENDING    // Menunggu Upgrade
+}
+
+enum SubscriptionTier {
+  BASIC
+  STANDARD
+  PRO
+  ENTERPRISE
+}
+
+enum PaymentStatus {
+  PENDING            // Menunggu
+  PROCESSING         // Diproses
+  COMPLETED          // Berhasil
+  FAILED             // Gagal
+  CANCELLED          // Dibatalkan
+  REFUNDED           // Dikembalikan
+}
+
+enum UserType {
+  SUPERADMIN         // SuperAdmin Platform
+  SPPG_USER          // User SPPG
+}
+
+enum Gender {
+  MALE               // Laki-laki
+  FEMALE             // Perempuan
+}
+
+enum StaffStatus {
+  ACTIVE             // Aktif
+  INACTIVE           // Nonaktif
+  SUSPENDED          // Ditangguhkan
+  TERMINATED         // Dihentikan
+}
+
+enum StaffRole {
+  SPPG_MANAGER       // Manajer SPPG
+  PRODUCTION_SUPERVISOR // Supervisor Produksi
+  HEAD_CHEF          // Chef Kepala
+  ASSISTANT_CHEF     // Asisten Chef
+  DISTRIBUTION_COORDINATOR // Koordinator Distribusi
+  DRIVER             // Driver
+  INVENTORY_ADMIN    // Admin Inventory
+  QUALITY_CONTROL    // Quality Control
+  FIELD_STAFF        // Staff Lapangan
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  SICK_LEAVE
+  ANNUAL_LEAVE
+  UNPAID_LEAVE
+  HOLIDAY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollComponentType {
+  EARNING
+  DEDUCTION
+  STATUTORY // BPJS, Tax, etc
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+  COMPLETED
+}
+
+enum TrainingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  REGISTERED
+  ATTENDED
+  COMPLETED
+  ABSENT
+  CANCELLED
+}
+
+enum DistributionPointType {
+  ELEMENTARY_SCHOOL  // Sekolah Dasar
+  MIDDLE_SCHOOL      // Sekolah Menengah Pertama
+  HIGH_SCHOOL        // Sekolah Menengah Atas
+  VOCATIONAL_SCHOOL  // Sekolah Kejuruan
+  SPECIAL_NEEDS_SCHOOL // Sekolah Berkebutuhan Khusus
+  POSYANDU           // Posyandu
+  PUSKESMAS          // Puskesmas
+  COMMUNITY_CENTER   // Pusat Komunitas
+  ELDERLY_CENTER     // Pusat Lansia
+  DAYCARE            // Daycare
+  PLACE_OF_WORSHIP   // Tempat Ibadah
+  OTHER              // Lainnya
+}
+
+enum SchoolType {
+  SD                 // Sekolah Dasar
+  SMP                // Sekolah Menengah Pertama  
+  SMA                // Sekolah Menengah Atas
+  SMK                // Sekolah Menengah Kejuruan
+  SLB                // Sekolah Luar Biasa
+  MI                 // Madrasah Ibtidaiyah
+  MTS                // Madrasah Tsanawiyah
+  MA                 // Madrasah Aliyah
+  MAK                // Madrasah Aliyah Kejuruan
+  PAUD               // Pendidikan Anak Usia Dini
+  TK                 // Taman Kanak-Kanak
+  KB                 // Kelompok Bermain
+}
+
+enum SchoolStatus {
+  ACTIVE             // Aktif
+  INACTIVE           // Nonaktif
+  PENDING_APPROVAL   // Menunggu Persetujuan
+  SUSPENDED          // Ditangguhkan
+  GRADUATED          // Lulus Program
+}
+
+enum AccreditationLevel {
+  A                  // Sangat Baik
+  B                  // Baik
+  C                  // Cukup
+  NOT_ACCREDITED     // Belum Terakreditasi
+}
+
+enum MealType {
+  BREAKFAST          // Sarapan
+  LUNCH              // Makan Siang
+  AFTERNOON_SNACK    // Makan Sore
+  SNACK              // Makanan Ringan
+  BEVERAGE           // Minuman
+  SPECIAL_MEAL       // Makanan Khusus
+}
+
+enum DistributionStatus {
+  PLANNED            // Direncanakan
+  PREPARING          // Persiapan
+  IN_TRANSIT         // Dalam Perjalanan
+  DELIVERED          // Terkirim
+  RETURNED           // Dikembalikan
+  CANCELLED          // Dibatalkan
+  DELAYED            // Terlambat
+}
+
+enum OperationStatus {
+  PLANNED            // Direncanakan
+  IN_PROGRESS        // Berlangsung
+  COMPLETED          // Selesai
+  CANCELLED          // Dibatalkan
+  POSTPONED          // Tertunda
+  EMERGENCY_STOP     // Emergency Stop
+}
+
+enum IngredientStatus {
+  AVAILABLE          // Tersedia
+  OUT_OF_STOCK       // Habis
+  LOW_STOCK          // Menipis
+  EXPIRED            // Kadaluarsa
+  DAMAGED            // Rusak
+  ORDERED            // Dipesan
+}
+
+enum ProcurementStatus {
+  DRAFT              // Draft
+  PENDING_APPROVAL   // Menunggu Persetujuan
+  APPROVED           // Disetujui
+  ORDERED            // Dipesan
+  PARTIALLY_RECEIVED // Diterima Sebagian
+  RECEIVED           // Diterima Lengkap
+  CANCELLED          // Dibatalkan
+}
+
+enum Unit {
+  KG                 // Kilogram
+  GRAM               // Gram
+  LITER              // Liter
+  ML                 // Mililiter
+  PCS                // Pieces
+  PACK               // Pack
+  BOX                // Box
+  CARTON             // Karton
+}
+
+enum MenuCategory {
+  STAPLE_FOOD        // Makanan Pokok
+  SIDE_DISH          // Lauk Pauk
+  VEGETABLES         // Sayur Mayur
+  FRUITS             // Buah-buahan
+  BEVERAGES          // Minuman
+  DESSERT            // Makanan Penutup
+}
+
+// ================================ CORE MODELS ================================
+
+model User {
+  id              String @id @default(cuid())
+  email           String @unique
+  password        String? // hashed password
+  name            String
+  phone           String?
+  profileImage    String?
+  
+  // User Type & SPPG Association
+  userType        UserType @default(SPPG_USER)
+  sppgId          String?
+  
+  // Account Status
+  emailVerified   DateTime?
+  isActive        Boolean @default(true)
+  lastLogin       DateTime?
+  
+  // Timezone Preferences
+  preferredTimezone   String? // Override SPPG timezone if needed
+  displayTimezone     String? // UI display preference
+  timezoneAutoDetect  Boolean @default(true) // Auto-detect from browser/device
+  
+  // Relations
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: SetNull)
+  userRoles       UserRole[] // Many-to-many dengan Role
+  
+  // New Relations
+  notifications   Notification[]
+  uploadedFiles   FileAttachment[]
+  respondedFeedbacks Feedback[] @relation("FeedbackResponder")
+  
+  // Advanced Relations
+  adjustmentsAsAdjuster InventoryAdjustment[] @relation("AdjustmentAdjuster")
+  adjustmentsAsApprover InventoryAdjustment[] @relation("AdjustmentApprover")
+  qualityChecks   QualityCheck[] @relation("QualityChecker")
+  
+  // Analytics Relations
+  createdDashboards AnalyticsDashboard[] @relation("DashboardCreator")
+  
+  // Mobile & Offline Relations
+  mobileSessions  MobileSession[]
+  offlineActions  OfflineAction[]
+  timezoneLogs    TimezoneLog[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([email])
+  @@index([sppgId])
+  @@index([userType])
+  @@map("users")
+}
+
+// ================================ RBAC MODELS ================================
+
+model Role {
+  id              String @id @default(cuid())
+  name            String // e.g., "Admin SPPG", "Manager Produksi", "Staff Dapur", etc.
+  description     String?
+  
+  // Role Scope
+  isSystemRole    Boolean @default(false) // true untuk SuperAdmin roles
+  sppgId          String? // null untuk system roles, filled untuk SPPG-specific roles
+  
+  // Relations
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId])
+  @@index([name, sppgId])
+  @@map("roles")
+}
+
+model Permission {
+  id              String @id @default(cuid())
+  name            String @unique // e.g., "menu.create", "procurement.approve", "report.view"
+  description     String?
+  module          String // e.g., "menu", "procurement", "production", "distribution", "report"
+  action          String // e.g., "create", "read", "update", "delete", "approve", "export"
+  
+  // Relations
+  rolePermissions RolePermission[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([module])
+  @@map("permissions")
+}
+
+model UserRole {
+  id              String @id @default(cuid())
+  userId          String
+  roleId          String
+  
+  // Assignment Details
+  assignedBy      String? // User ID yang memberikan role
+  assignedAt      DateTime @default(now())
+  isActive        Boolean @default(true)
+  expiresAt       DateTime? // Optional expiration
+  
+  // Relations
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  id              String @id @default(cuid())
+  roleId          String
+  permissionId    String
+  
+  // Relations
+  role            Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission      Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model SPPG {
+  id              String @id @default(cuid())
+  code            String @unique // Kode SPPG
+  name            String  // Nama SPPG
+  description     String?
+  address         String
+  phone           String
+  email           String
+  
+  targetRecipients    Int      // Target penerima
+  maxRadius          Float    // dalam KM - radius maksimal
+  maxTravelTime      Int      // dalam menit - waktu tempuh maksimal
+  operationStartDate DateTime // tanggal mulai operasi
+  operationEndDate   DateTime?// tanggal berakhir operasi
+  status             SppgStatus @default(ACTIVE)
+  
+  // Timezone Configuration
+  timezone            String @default("Asia/Jakarta") // IANA timezone identifier
+  businessHoursStart  String @default("06:00")        // Local business start time
+  businessHoursEnd    String @default("18:00")        // Local business end time
+  weekendDays         Int[] @default([0, 6])          // 0=Sunday, 6=Saturday
+  operationalDays     String @default("MONDAY_TO_FRIDAY") // Operational pattern
+  
+  // Location (mengikuti standar pemerintah Indonesia)
+  provinceId      String // ID Provinsi
+  regencyId       String // ID Kabupaten/Kota
+  districtId      String // ID Kecamatan
+  villageId       String // ID Desa/Kelurahan
+  
+  // Relations
+  users           User[]
+  roles           Role[] // SPPG-specific roles
+  subscription    Subscription?
+  staff           Staff[]
+  distributionPoints DistributionPoint[]
+  menus           Menu[]
+  dailyOperations DailyOperation[]
+  ingredients     Ingredient[]
+  procurements    Procurement[]
+  stockLogs       StockLog[]
+  menuPlannings   MenuPlanning[]
+  invoices        Invoice[]
+  dailyReports    DailyReport[]
+  
+  // New Relations
+  notifications   Notification[]
+  fileAttachments FileAttachment[]
+  feedbacks       Feedback[]
+  
+  // Advanced Relations
+  supplierEvaluations SupplierEvaluation[]
+  inventoryAdjustments InventoryAdjustment[]
+  qualityChecks   QualityCheck[]
+  
+  // Cost & Nutrition Relations
+  costCategories  CostCategory[]
+  menuCostCalculations MenuCostCalculation[]
+  
+  // HR Relations
+  leaveTypes      LeaveType[]
+  payrollComponents PayrollComponent[]
+  trainingPrograms TrainingProgram[]
+  
+  // School Relations
+  schools         School[]
+  students        Student[]
+  mealDeliveries  MealDelivery[]
+  schoolNutritionReports SchoolNutritionReport[]
+  schoolInspections SchoolInspection[]
+  
+  // Quality Assurance Relations
+  qualityControlChecklists QualityControlChecklist[]
+  qualityAssuranceChecks QualityAssuranceCheck[]
+  productSafetyCertifications ProductSafetyCertification[]
+  qualityIncidents QualityIncident[]
+  
+  // Analytics Relations
+  analyticsDashboards AnalyticsDashboard[]
+  kpiTrackings    KPITracking[]
+  predictiveAnalytics PredictiveAnalytics[]
+  
+  // Application Settings Relations
+  sppgSettings    SppgSetting[]
+  featureAccess   SppgFeatureAccess[]
+  apiKeys         ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
+  
+  // Mobile & Offline Relations
+  mobileSessions  MobileSession[]
+  offlineActions  OfflineAction[]
+  timezoneLogs    TimezoneLog[]
+  
+  // Regional Relations
+  province        Province @relation("SPPGProvince", fields: [provinceId], references: [id])
+  regency         Regency @relation("SPPGRegency", fields: [regencyId], references: [id])
+  district        District @relation("SPPGDistrict", fields: [districtId], references: [id])
+  village         Village @relation("SPPGVillage", fields: [villageId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([status])
+  @@index([provinceId, regencyId])
+  @@map("sppg")
+}
+
+model Subscription {
+  id              String @id @default(cuid())
+  sppgId          String @unique
+  
+  // Subscription Details
+  tier            SubscriptionTier
+  status          SubscriptionStatus @default(ACTIVE)
+  
+  // Billing Dates
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+  billingDate     DateTime
+  
+  // Current Usage Limits  
+  maxRecipients   Int   // Maksimal penerima
+  maxStaff        Int   // Maksimal staff
+  maxDistributionPoints Int // Maksimal titik distribusi
+  storageGb       Int   // Storage dalam GB
+  
+  // Package Reference
+  packageId       String?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  package         SubscriptionPackage? @relation(fields: [packageId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("subscriptions")
+}
+
+model Staff {
+  id              String @id @default(cuid())
+  sppgId          String
+  employeeId      String? // NIP
+  name            String
+  email           String? @unique
+  phone           String
+  address         String?
+  birthDate       DateTime?
+  gender          Gender
+  
+  // Employment  
+  role            StaffRole
+  department      String?
+  hireDate        DateTime @default(now())
+  terminationDate DateTime?
+  status          StaffStatus @default(ACTIVE)
+  salary          Float?
+  
+  // Certifications & Skills
+  haccpCertified  Boolean @default(false) // Sertifikasi HACCP
+  halalCertified  Boolean @default(false) // Sertifikasi Halal
+  specialSkills   String[] // Skill khusus
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  supervisedOperations DailyOperation[]
+  
+  // HR Relations
+  attendance              StaffAttendance[]
+  leaveRequests          LeaveRequest[]
+  approvedLeaves         LeaveRequest[] @relation("LeaveApprover")
+  payrollComponents      StaffPayrollComponent[]
+  payrolls               Payroll[]
+  performanceReviews     PerformanceReview[]
+  conductedReviews       PerformanceReview[] @relation("PerformanceReviewer")
+  trainingParticipations TrainingParticipant[]
+  
+  // Quality Assurance Relations
+  qualityChecksAsChecker QualityAssuranceCheck[] @relation("QualityChecker")
+  qualityChecksAsSupervisor QualityAssuranceCheck[] @relation("QualitySupervisor")
+  reportedIncidents      QualityIncident[] @relation("IncidentReporter")
+  investigatedIncidents  QualityIncident[] @relation("IncidentInvestigator")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, employeeId])
+  @@index([sppgId, status])
+  @@map("staff")
+}
+
+// === HR MANAGEMENT MODELS ===
+
+// === ATTENDANCE MANAGEMENT ===
+model StaffAttendance {
+  id              String @id @default(cuid())
+  staffId         String
+  date            DateTime @db.Date
+  
+  // Check in/out times
+  checkIn         DateTime?
+  checkOut        DateTime?
+  breakStart      DateTime?
+  breakEnd        DateTime?
+  
+  // Calculated hours
+  workHours       Float? // Jam kerja aktual
+  overtimeHours   Float? // Jam lembur
+  breakHours      Float? // Jam istirahat
+  
+  // Status
+  status          AttendanceStatus @default(PRESENT)
+  notes           String? // Catatan khusus
+  
+  // Relations
+  staff           Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([staffId, date])
+  @@index([date, status])
+  @@map("staff_attendance")
+}
+
+// === LEAVE MANAGEMENT ===
+model LeaveType {
+  id              String @id @default(cuid())
+  sppgId          String
+  name            String // Cuti Tahunan, Cuti Sakit, Cuti Melahirkan, dll
+  code            String // ANNUAL, SICK, MATERNITY, etc
+  maxDaysPerYear  Int
+  carryOverDays   Int @default(0) // Hari yang bisa dibawa ke tahun berikutnya
+  requiresDocument Boolean @default(false) // Butuh surat keterangan dokter, dll
+  isActive        Boolean @default(true)
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  leaveRequests   LeaveRequest[]
+  
+  @@unique([sppgId, code])
+  @@map("leave_types")
+}
+
+model LeaveRequest {
+  id              String @id @default(cuid())
+  staffId         String
+  leaveTypeId     String
+  
+  startDate       DateTime @db.Date
+  endDate         DateTime @db.Date
+  totalDays       Int
+  reason          String
+  document        String? // URL to supporting document
+  
+  status          LeaveStatus @default(PENDING)
+  approvedBy      String? // Staff ID yang approve
+  approvedAt      DateTime?
+  rejectionReason String?
+  
+  staff           Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  leaveType       LeaveType @relation(fields: [leaveTypeId], references: [id])
+  approver        Staff? @relation("LeaveApprover", fields: [approvedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([staffId, status])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
+}
+
+// === PAYROLL MANAGEMENT ===
+model PayrollComponent {
+  id              String @id @default(cuid())
+  sppgId          String
+  name            String // Gaji Pokok, Tunjangan Makan, BPJS, Pajak, dll
+  code            String // BASIC_SALARY, MEAL_ALLOWANCE, BPJS, TAX
+  type            PayrollComponentType
+  calculationType String // FIXED, PERCENTAGE, HOURLY
+  defaultAmount   Float?
+  isActive        Boolean @default(true)
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  staffPayrollComponents StaffPayrollComponent[]
+  
+  @@unique([sppgId, code])
+  @@map("payroll_components")
+}
+
+model StaffPayrollComponent {
+  id                  String @id @default(cuid())
+  staffId             String
+  payrollComponentId  String
+  amount              Float
+  isActive            Boolean @default(true)
+  
+  staff               Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  payrollComponent    PayrollComponent @relation(fields: [payrollComponentId], references: [id])
+  
+  @@unique([staffId, payrollComponentId])
+  @@map("staff_payroll_components")
+}
+
+model Payroll {
+  id              String @id @default(cuid())
+  staffId         String
+  periodMonth     Int // 1-12
+  periodYear      Int
+  
+  // Earnings
+  basicSalary     Float
+  allowances      Float @default(0)
+  overtime        Float @default(0)
+  bonus           Float @default(0)
+  grossSalary     Float
+  
+  // Deductions
+  tax             Float @default(0)
+  bpjs            Float @default(0)
+  insurance       Float @default(0)
+  loan            Float @default(0)
+  otherDeductions Float @default(0)
+  totalDeductions Float
+  
+  // Net
+  netSalary       Float
+  
+  // Status
+  status          PayrollStatus @default(DRAFT)
+  paidAt          DateTime?
+  paymentMethod   String? // BANK_TRANSFER, CASH
+  paymentReference String? // No referensi transfer
+  
+  staff           Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([staffId, periodMonth, periodYear])
+  @@index([periodYear, periodMonth])
+  @@map("payrolls")
+}
+
+// === PERFORMANCE MANAGEMENT ===
+model PerformanceReview {
+  id              String @id @default(cuid())
+  staffId         String
+  reviewerId      String
+  reviewPeriod    String // Q1-2024, 2024-Annual, etc
+  
+  overallRating   Float // 1-5 scale
+  goals           Json // Array of goals dengan progress
+  strengths       String[]
+  improvements    String[]
+  comments        String?
+  
+  status          ReviewStatus @default(DRAFT)
+  submittedAt     DateTime?
+  acknowledgedAt  DateTime? // Kapan staff acknowledge review
+  
+  staff           Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  reviewer        Staff @relation("PerformanceReviewer", fields: [reviewerId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([staffId, reviewPeriod])
+  @@map("performance_reviews")
+}
+
+// === TRAINING & CERTIFICATION ===
+model TrainingProgram {
+  id              String @id @default(cuid())
+  sppgId          String
+  title           String
+  description     String?
+  category        String // FOOD_SAFETY, LEADERSHIP, TECHNICAL, etc
+  duration        Int // durasi dalam jam
+  maxParticipants Int?
+  cost            Float?
+  isActive        Boolean @default(true)
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  trainingSessions TrainingSession[]
+  
+  @@map("training_programs")
+}
+
+model TrainingSession {
+  id              String @id @default(cuid())
+  programId       String
+  title           String
+  startDate       DateTime
+  endDate         DateTime
+  location        String?
+  instructor      String?
+  maxParticipants Int?
+  status          TrainingStatus @default(SCHEDULED)
+  
+  program         TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  participants    TrainingParticipant[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("training_sessions")
+}
+
+model TrainingParticipant {
+  id              String @id @default(cuid())
+  sessionId       String
+  staffId         String
+  
+  status          ParticipantStatus @default(REGISTERED)
+  completionDate  DateTime?
+  score           Float? // 0-100
+  certificateUrl  String?
+  feedback        String?
+  
+  session         TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  staff           Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, staffId])
+  @@map("training_participants")
+}
+
+model DistributionPoint {
+  id              String @id @default(cuid())
+  sppgId          String
+  code            String              
+  name            String              
+  type            DistributionPointType
+  address         String
+  latitude        Float?
+  longitude       Float?
+  
+  // Contact & Operations
+  contactPersonName    String // PIC Nama
+  contactPersonPhone   String // PIC Telepon
+  contactPersonEmail   String? // PIC Email
+  
+  // Portion Requirements
+  dailyPortions        Int    // Porsi harian
+  operatingDays        String // Hari operasional
+  deliveryTime         String // Jam pengiriman
+  
+  // Special Requirements  
+  specialNeeds         String? // Kebutuhan khusus
+  accessNotes          String? // Catatan akses
+  
+  // Status
+  isActive             Boolean @default(true)
+  startDate            DateTime @default(now())
+  endDate              DateTime?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  deliveries      DeliveryPoint[]
+  feedbacks       Feedback[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, code])
+  @@index([sppgId, type, isActive])
+  @@map("distribution_points")
+}
+
+// === SCHOOL MANAGEMENT ===
+model School {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Basic Information
+  npsn            String? @unique // Nomor Pokok Sekolah Nasional
+  name            String
+  type            SchoolType
+  level           String // "Dasar", "Menengah", "Kejuruan"
+  status          SchoolStatus @default(PENDING_APPROVAL)
+  
+  // Official Data
+  foundedYear     Int?
+  accreditation   AccreditationLevel?
+  accreditationDate DateTime?
+  schoolOperationalPermit String? // Ijin Operasional Sekolah
+  
+  // Contact Information
+  address         String
+  postalCode      String?
+  latitude        Float?
+  longitude       Float?
+  phone           String?
+  email           String?
+  website         String?
+  
+  // Regional Location
+  provinceId      String
+  regencyId       String
+  districtId      String
+  villageId       String
+  
+  // Educational Data
+  totalStudents   Int @default(0)
+  totalTeachers   Int @default(0)
+  totalClasses    Int @default(0)
+  totalClassrooms Int @default(0)
+  
+  // Program Participation
+  participationStartDate DateTime?
+  participationEndDate   DateTime?
+  isActive        Boolean @default(true)
+  
+  // Contact Person (Kepala Sekolah / PIC)
+  principalName   String? // Nama Kepala Sekolah
+  principalPhone  String?
+  principalEmail  String?
+  picName         String? // Person In Charge untuk program SPPG
+  picPhone        String?
+  picEmail        String?
+  picPosition     String? // Jabatan PIC
+  
+  // Nutrition Program Specific
+  dailyMealQuota  Int @default(0) // Kuota makan harian
+  servingDays     String? // Hari pelayanan (JSON array: ["MONDAY", "TUESDAY", ...])
+  servingTime     String? // Jam makan (contoh: "12:00-13:00")
+  specialRequirements String? // Kebutuhan khusus (halal, vegetarian, alergi, dll)
+  kitchenFacility Boolean @default(false) // Apakah punya dapur sendiri
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  province        Province @relation("SchoolProvince", fields: [provinceId], references: [id])
+  regency         Regency @relation("SchoolRegency", fields: [regencyId], references: [id])
+  district        District @relation("SchoolDistrict", fields: [districtId], references: [id])
+  village         Village @relation("SchoolVillage", fields: [villageId], references: [id])
+  
+  // Program Relations
+  students        Student[]
+  mealDeliveries  MealDelivery[]
+  nutritionReports SchoolNutritionReport[]
+  feedbacks       SchoolFeedback[]
+  inspections     SchoolInspection[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, npsn])
+  @@index([sppgId, status, isActive])
+  @@index([type, status])
+  @@index([provinceId, regencyId, districtId])
+  @@map("schools")
+}
+
+// === STUDENT MANAGEMENT ===
+model Student {
+  id              String @id @default(cuid())
+  schoolId        String
+  sppgId          String
+  
+  // Basic Information
+  studentId       String // NIS/NISN
+  name            String
+  gender          Gender
+  birthDate       DateTime @db.Date
+  birthPlace      String?
+  
+  // Contact Information
+  address         String?
+  phone           String?
+  email           String?
+  
+  // Guardian Information
+  guardianName    String
+  guardianPhone   String
+  guardianEmail   String?
+  guardianRelation String // "Ayah", "Ibu", "Wali", dll
+  
+  // Educational Data
+  class           String // Kelas (1A, 2B, XII IPA 1, dll)
+  grade           Int // Tingkat (1-12)
+  academicYear    String // Tahun Ajaran (2024/2025)
+  
+  // Nutrition Program
+  isActive        Boolean @default(true)
+  enrollmentDate  DateTime @default(now())
+  graduationDate  DateTime?
+  
+  // Health & Nutrition
+  height          Float? // cm
+  weight          Float? // kg
+  allergies       String[] // Alergi makanan
+  specialDiet     String? // Diet khusus
+  healthNotes     String? // Catatan kesehatan
+  
+  // Relations
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  mealRecords     StudentMealRecord[]
+  nutritionReports StudentNutritionReport[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([schoolId, studentId])
+  @@index([schoolId, isActive])
+  @@index([sppgId, isActive])
+  @@index([grade, academicYear])
+  @@map("students")
+}
+
+// === MEAL DELIVERY & TRACKING ===
+model MealDelivery {
+  id              String @id @default(cuid())
+  schoolId        String
+  sppgId          String
+  deliveryDate    DateTime @db.Date
+  
+  // Menu Information
+  menuId          String
+  portionsPlanned Int
+  portionsDelivered Int?
+  portionsConsumed Int?
+  
+  // Delivery Status
+  status          MealDeliveryStatus @default(PLANNED)
+  deliveryTime    DateTime?
+  receivedBy      String? // Nama yang menerima
+  receivedAt      DateTime?
+  
+  // Quality & Feedback
+  temperature     Float? // Suhu makanan saat diterima
+  qualityRating   Int? // 1-5
+  feedback        String?
+  photos          String[] // URLs foto makanan
+  
+  // Relations
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  menu            Menu @relation(fields: [menuId], references: [id])
+  mealRecords     StudentMealRecord[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([schoolId, deliveryDate, menuId])
+  @@index([schoolId, deliveryDate])
+  @@index([sppgId, deliveryDate, status])
+  @@map("meal_deliveries")
+}
+
+model StudentMealRecord {
+  id              String @id @default(cuid())
+  studentId       String
+  mealDeliveryId  String
+  
+  // Consumption Data
+  isPresent       Boolean @default(true)
+  portionConsumed Float @default(1.0) // 0.0 - 1.0 (percentage)
+  satisfaction    Int? // 1-5 rating
+  feedback        String?
+  
+  // Relations
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mealDelivery    MealDelivery @relation(fields: [mealDeliveryId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([studentId, mealDeliveryId])
+  @@map("student_meal_records")
+}
+
+// === SCHOOL MONITORING & REPORTING ===
+model SchoolNutritionReport {
+  id              String @id @default(cuid())
+  schoolId        String
+  sppgId          String
+  reportMonth     Int // 1-12
+  reportYear      Int
+  
+  // Participation Data
+  totalStudents   Int
+  activeStudents  Int
+  averageAttendance Float // Percentage
+  
+  // Nutrition Metrics
+  totalMealsServed Int
+  averageCaloriesPerMeal Float
+  averageProteinPerMeal Float
+  nutritionGoalAchievement Float // Percentage
+  
+  // Satisfaction Metrics
+  averageSatisfactionRating Float
+  complaintCount  Int
+  complimentCount Int
+  
+  // Health Impact (optional)
+  averageHeightGain Float?
+  averageWeightGain Float?
+  healthImprovementNotes String?
+  
+  // Relations
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([schoolId, reportMonth, reportYear])
+  @@index([sppgId, reportYear, reportMonth])
+  @@map("school_nutrition_reports")
+}
+
+model StudentNutritionReport {
+  id              String @id @default(cuid())
+  studentId       String
+  reportMonth     Int
+  reportYear      Int
+  
+  // Anthropometric Data
+  height          Float? // cm
+  weight          Float? // kg
+  bmi             Float?
+  nutritionStatus String? // "Normal", "Underweight", "Overweight", "Stunted"
+  
+  // Consumption Metrics
+  mealsConsumed   Int
+  averagePortion  Float
+  caloriesConsumed Float
+  proteinConsumed Float
+  
+  // Health Notes
+  healthNotes     String?
+  recommendations String?
+  
+  // Relations
+  student         Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([studentId, reportMonth, reportYear])
+  @@map("student_nutrition_reports")
+}
+
+model SchoolFeedback {
+  id              String @id @default(cuid())
+  schoolId        String
+  
+  // Feedback Details
+  feedbackType    SchoolFeedbackType
+  category        String // "FOOD_QUALITY", "DELIVERY", "SERVICE", "PROGRAM"
+  rating          Int // 1-5
+  title           String
+  description     String
+  suggestions     String?
+  
+  // Reporter Information
+  reporterName    String
+  reporterPosition String // "Principal", "Teacher", "Student", "Parent"
+  reporterContact String?
+  
+  // Status
+  status          SchoolFeedbackStatus @default(OPEN)
+  responseText    String?
+  respondedBy     String?
+  respondedAt     DateTime?
+  
+  // Relations
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([schoolId, feedbackType, status])
+  @@map("school_feedbacks")
+}
+
+model SchoolInspection {
+  id              String @id @default(cuid())
+  schoolId        String
+  sppgId          String
+  
+  // Inspection Details
+  inspectionDate  DateTime @db.Date
+  inspectorName   String
+  inspectorPosition String
+  inspectionType  String // "ROUTINE", "COMPLAINT_FOLLOW_UP", "AUDIT"
+  
+  // Checklist Results
+  facilityScore   Int? // 1-100
+  hygieneScore    Int? // 1-100
+  foodQualityScore Int? // 1-100
+  serviceScore    Int? // 1-100
+  overallScore    Int? // 1-100
+  
+  // Findings
+  findings        String[]
+  violations      String[]
+  recommendations String[]
+  correctionDeadline DateTime?
+  
+  // Status
+  status          InspectionStatus @default(COMPLETED)
+  followUpRequired Boolean @default(false)
+  followUpDate    DateTime?
+  
+  // Relations
+  school          School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([schoolId, inspectionDate])
+  @@index([sppgId, inspectionDate, status])
+  @@map("school_inspections")
+}
+
+// === ADDITIONAL ENUMS ===
+enum MealDeliveryStatus {
+  PLANNED
+  IN_TRANSIT
+  DELIVERED
+  RECEIVED
+  CONSUMED
+  CANCELLED
+}
+
+enum SchoolFeedbackType {
+  COMPLAINT
+  COMPLIMENT
+  SUGGESTION
+  INQUIRY
+}
+
+enum SchoolFeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  FOLLOW_UP_REQUIRED
+}
+
+// === QUALITY ASSURANCE ENUMS ===
+enum QualityCheckType {
+  INGREDIENT_INSPECTION    // Pemeriksaan Bahan Baku
+  PRODUCTION_SAFETY       // Keamanan Produksi
+  FOOD_TEMPERATURE        // Suhu Makanan
+  HYGIENE_CHECK          // Pemeriksaan Kebersihan
+  FINAL_PRODUCT          // Produk Akhir
+  STORAGE_CONDITION      // Kondisi Penyimpanan
+  DELIVERY_SAFETY        // Keamanan Pengiriman
+  FACILITY_AUDIT         // Audit Fasilitas
+}
+
+enum QualityAssuranceStatus {
+  PENDING
+  IN_PROGRESS
+  PASSED
+  FAILED
+  REQUIRES_RECHECK
+  CRITICAL_FAILURE
+}
+
+enum QualityRiskLevel {
+  LOW                    // Risiko Rendah
+  MEDIUM                 // Risiko Sedang
+  HIGH                   // Risiko Tinggi
+  CRITICAL               // Risiko Kritis
+}
+
+enum CertificationStatus {
+  ACTIVE
+  EXPIRED
+  PENDING_RENEWAL
+  SUSPENDED
+  REVOKED
+}
+
+enum AnalyticsMetricType {
+  PRODUCTION_EFFICIENCY   // Efisiensi Produksi
+  COST_ANALYSIS          // Analisis Biaya
+  NUTRITION_COMPLIANCE   // Kepatuhan Gizi
+  QUALITY_SCORE          // Skor Kualitas
+  DISTRIBUTION_COVERAGE  // Cakupan Distribusi
+  BENEFICIARY_SATISFACTION // Kepuasan Penerima
+  STAFF_PERFORMANCE      // Performa Staff
+  INVENTORY_TURNOVER     // Perputaran Inventori
+}
+
+enum DashboardType {
+  EXECUTIVE              // Dashboard Eksekutif
+  OPERATIONAL           // Dashboard Operasional
+  QUALITY_CONTROL       // Dashboard Quality Control
+  FINANCIAL             // Dashboard Keuangan
+  NUTRITION             // Dashboard Gizi
+  COMPLIANCE            // Dashboard Kepatuhan
+}
+
+model Menu {
+  id              String @id @default(cuid())
+  sppgId          String
+  code            String
+  name            String
+  description     String?
+  type            MealType
+  category        MenuCategory
+  
+  // Nutrition per serving
+  caloriesPerServing Float
+  proteinGrams      Float
+  fatGrams          Float
+  carbohydrateGrams Float
+  fiberGrams        Float
+  
+  // Additional nutritional info
+  sodiumMg          Float?
+  sugarGrams        Float?
+  saturatedFatGrams Float?
+  
+  // Cost & Preparation
+  costPerServing    Float
+  preparationTimeMinutes Int
+  servingsPerBatch  Int
+  difficultyLevel   String? // EASY, MEDIUM, HARD
+  
+  // Dietary & Allergies
+  isHalal           Boolean @default(true)
+  isVegetarian      Boolean @default(false)
+  isGlutenFree      Boolean @default(false)
+  allergenInfo      String? // "Contains: nuts, eggs"
+  
+  // Status
+  isActive          Boolean @default(true)
+  
+  // Chef notes
+  specialInstructions String? // Instruksi khusus
+  presentationTips    String? // Tips presenting
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  productions     Production[]
+  distributions   Distribution[]
+  recipeDetails   RecipeDetail[]
+  planningDetails MenuPlanningDetail[]
+  
+  // New Relations
+  nutritionAnalyses MenuNutritionAnalysis[]
+  costCalculations  MenuCostCalculation[]
+  mealDeliveries    MealDelivery[]
+  qualityAssuranceChecks QualityAssuranceCheck[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, code])
+  @@index([sppgId, type, isActive])
+  @@map("menus")
+}
+
+model DailyOperation {
+  id              String @id @default(cuid()) 
+  sppgId          String
+  date            DateTime @db.Date
+  status          OperationStatus
+  
+  plannedPortions   Int
+  producedPortions  Int
+  distributedPortions Int
+  
+  staffPresent      Int
+  menusServed       String[] // Menu yang disajikan
+  weather           String?
+  notes             String?
+  
+  costPerServing    Float?
+  totalCost         Float?
+  supervisorId      String?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  supervisor      Staff? @relation(fields: [supervisorId], references: [id])
+  productions     Production[]
+  distributions   Distribution[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, date])
+  @@map("daily_operations")
+}
+
+model Production {
+  id              String @id @default(cuid())
+  operationId     String
+  menuId          String
+  batchCount      Int
+  servingsPerBatch Int
+  totalServings   Int
+  startTime       DateTime?
+  endTime         DateTime?
+  qualityCheck    String?
+  notes           String?
+  
+  operation       DailyOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  menu            Menu @relation(fields: [menuId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("productions")
+}
+
+model Distribution {
+  id              String @id @default(cuid())
+  operationId     String
+  menuId          String
+  vehicleId       String?
+  driverId        String?
+  
+  plannedQuantity   Int
+  deliveredQuantity Int
+  departureTime     DateTime?
+  arrivalTime       DateTime?
+  status            DistributionStatus
+  receivedByPIC     String?
+  deliveryTemperature Float?
+  qualityNotes      String?
+  distributionNotes String?
+  returnedQuantity  Int @default(0)
+  
+  operation       DailyOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  menu            Menu @relation(fields: [menuId], references: [id])
+  deliveryPoints  DeliveryPoint[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("distributions")
+}
+
+model DeliveryPoint {
+  id                 String @id @default(cuid())
+  distributionId     String
+  distributionPointId String
+  portionCount       Int
+  deliveryTime       DateTime?
+  receptionStatus    String
+  recipientNotes     String?
+  
+  distribution       Distribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  distributionPoint  DistributionPoint @relation(fields: [distributionPointId], references: [id])
+  
+  @@unique([distributionId, distributionPointId])
+  @@map("delivery_points")
+}
+
+// ================================ PROCUREMENT & INVENTORY MODELS ================================
+
+model Ingredient {
+  id              String @id @default(cuid())
+  sppgId          String
+  code            String
+  name            String
+  category        String
+  primaryUnit     Unit
+  purchaseUnit    Unit
+  conversionFactor Float
+  
+  // Stock Info
+  minStock        Int
+  maxStock        Int
+  currentStock    Int @default(0)
+  status          IngredientStatus @default(AVAILABLE)
+  
+  // Cost Info
+  averagePrice    Float?
+  lastPrice       Float?
+  primarySupplier String?
+  
+  // Quality Control
+  shelfLifeDays   Int? // Masa berlaku dalam hari
+  specialRequirements String? // Persyaratan khusus
+  storageNotes    String? // Catatan penyimpanan
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  recipeDetails   RecipeDetail[]
+  procurementDetails ProcurementDetail[]
+  stockLogs       StockLog[]
+  adjustments     InventoryAdjustment[]
+  qualityAssuranceChecks QualityAssuranceCheck[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, code])
+  @@index([sppgId, status])
+  @@map("ingredients")
+}
+
+model RecipeDetail {
+  id              String @id @default(cuid())
+  menuId          String
+  ingredientId    String
+  quantity        Float
+  unit            Unit
+  notes           String?
+  
+  menu            Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([menuId, ingredientId])
+  @@map("recipe_details")
+}
+
+model Procurement {
+  id              String @id @default(cuid())
+  sppgId          String
+  poNumber        String // Purchase Order Number
+  poDate          DateTime @default(now())
+  requiredDate    DateTime
+  supplierId      String?
+  supplierName    String
+  supplierContact String
+  
+  status          ProcurementStatus @default(DRAFT)
+  estimatedTotal  Float?
+  actualTotal     Float?
+  discount        Float @default(0)
+  tax             Float @default(0)
+  
+  // Approval
+  approvedBy      String?
+  approvalDate    DateTime?
+  approvalNotes   String?
+  
+  // Delivery
+  shipmentDate    DateTime?
+  receivedDate    DateTime?
+  receptionNotes  String?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  details         ProcurementDetail[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, poNumber])
+  @@index([sppgId, status])
+  @@map("procurements")
+}
+
+model ProcurementDetail {
+  id              String @id @default(cuid())
+  procurementId   String
+  ingredientId    String
+  orderedQuantity Float
+  receivedQuantity Float @default(0)
+  unit            Unit
+  unitPrice       Float
+  totalPrice      Float
+  
+  expiryDate      DateTime?
+  batchNumber     String?
+  qualityCheck    String?
+  notes           String?
+  
+  procurement     Procurement @relation(fields: [procurementId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("procurement_details")
+}
+
+model StockLog {
+  id              String @id @default(cuid())
+  sppgId          String
+  ingredientId    String
+  transactionType String // IN, OUT, ADJUSTMENT, EXPIRED
+  quantity        Float
+  unit            Unit
+  stockBefore     Float
+  stockAfter      Float
+  
+  // References
+  referenceId     String? // ID procurement, operasi, dll
+  referenceType   String? // PROCUREMENT, PRODUCTION, ADJUSTMENT
+  
+  notes           String?
+  createdBy       String?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([sppgId, ingredientId])
+  @@index([createdAt])
+  @@map("stock_logs")
+}
+
+// ================================ ADVANCED MENU & PLANNING ================================
+
+model MenuPlanning {
+  id              String @id @default(cuid())
+  sppgId          String
+  weekNumber      Int
+  month           Int
+  year            Int
+  status          String @default("DRAFT") // DRAFT, APPROVED, ACTIVE
+  
+  targetCalories  Float?
+  targetProtein   Float?
+  budgetPerServing Float?
+  specialNotes    String?
+  
+  approvedBy      String?
+  approvalDate    DateTime?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  details         MenuPlanningDetail[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, weekNumber, month, year])
+  @@map("menu_plannings")
+}
+
+model MenuPlanningDetail {
+  id              String @id @default(cuid())
+  planningId      String
+  dayOfWeek       Int // 1-7 (Monday-Sunday)
+  mealType        MealType
+  menuId          String
+  servingCount    Int
+  
+  planning        MenuPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  menu            Menu @relation(fields: [menuId], references: [id])
+  
+  @@unique([planningId, dayOfWeek, mealType])
+  @@map("menu_planning_details")
+}
+
+// ================================ FINANCIAL MODELS ================================
+
+model Invoice {
+  id              String @id @default(cuid())
+  sppgId          String
+  invoiceNumber   String @unique
+  period          String // "2025-01" format
+  
+  // Billing Details
+  baseAmount      Float
+  tax             Float @default(0)
+  discount        Float @default(0)
+  totalAmount     Float
+  
+  // Status & Dates
+  status          PaymentStatus @default(PENDING)
+  invoiceDate     DateTime @default(now())
+  dueDate         DateTime
+  paidDate        DateTime?
+  
+  // Payment Details
+  paymentMethod   String?
+  paymentReference String?
+  paymentNotes    String?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, period])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+// ================================ REPORTING MODELS ================================
+
+model DailyReport {
+  id              String @id @default(cuid())
+  sppgId          String
+  date            DateTime @db.Date
+  
+  // Production Summary
+  totalMenusProduced    Int
+  totalServingsProduced Int
+  totalProductionCost   Float
+  productionEfficiency  Float?
+  
+  // Distribution Summary  
+  totalDistributionPoints   Int
+  totalServingsDistributed  Int
+  deliverySuccessRate       Float?
+  
+  // Staff & Operations
+  staffPresentCount     Int
+  operationalHours      Float
+  specialNotes          String?
+  weatherCondition      String?
+  
+  // Quality Metrics
+  complaintCount        Int @default(0)
+  satisfactionRating    Float?
+  
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, date])
+  @@map("daily_reports")
+}
+
+// ================================ NUTRITION & AKG MODELS ================================
+
+model NutritionStandard {
+  id              String @id @default(cuid())
+  name            String // "AKG Indonesia 2019", "WHO Standards", etc.
+  description     String?
+  version         String
+  country         String @default("Indonesia")
+  
+  // Reference Information
+  publishedBy     String // "Kemenkes RI", "WHO", etc.
+  publishedDate   DateTime
+  validFrom       DateTime
+  validUntil      DateTime?
+  
+  isActive        Boolean @default(true)
+  isDefault       Boolean @default(false)
+  
+  // Relations
+  nutritionRequirements NutritionRequirement[]
+  menuAnalyses    MenuNutritionAnalysis[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([name, version])
+  @@map("nutrition_standards")
+}
+
+model NutritionRequirement {
+  id              String @id @default(cuid())
+  standardId      String
+  
+  // Target Group
+  ageGroup        AgeGroup
+  gender          Gender?
+  activityLevel   String? // "SEDENTARY", "MODERATE", "ACTIVE"
+  specialCondition String? // "PREGNANT_TRIMESTER_1", "LACTATING_0_6_MONTHS"
+  
+  // Macronutrients (per day)
+  calories        Float // kkal
+  protein         Float // gram
+  fat             Float // gram
+  carbohydrate    Float // gram
+  fiber           Float // gram
+  
+  // Vitamins (per day)
+  vitaminA        Float? // mcg
+  vitaminB1       Float? // mg (Thiamine)
+  vitaminB2       Float? // mg (Riboflavin)
+  vitaminB3       Float? // mg (Niacin)
+  vitaminB6       Float? // mg
+  vitaminB12      Float? // mcg
+  vitaminC        Float? // mg
+  vitaminD        Float? // mcg
+  vitaminE        Float? // mg
+  vitaminK        Float? // mcg
+  folate          Float? // mcg
+  
+  // Minerals (per day)
+  calcium         Float? // mg
+  iron            Float? // mg
+  magnesium       Float? // mg
+  phosphorus      Float? // mg
+  potassium       Float? // mg
+  sodium          Float? // mg
+  zinc            Float? // mg
+  
+  standard        NutritionStandard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([standardId, ageGroup, gender, specialCondition])
+  @@index([ageGroup, gender])
+  @@map("nutrition_requirements")
+}
+
+model MenuNutritionAnalysis {
+  id              String @id @default(cuid())
+  menuId          String
+  standardId      String
+  
+  // Target Analysis
+  targetAgeGroup  AgeGroup
+  targetGender    Gender?
+  servingSize     Float // gram
+  
+  // Nutritional Content (calculated from recipe)
+  totalCalories   Float
+  totalProtein    Float
+  totalFat        Float
+  totalCarbs      Float
+  totalFiber      Float
+  totalSodium     Float?
+  totalSugar      Float?
+  
+  // AKG Fulfillment Percentage
+  caloriesFulfillment   Float // percentage
+  proteinFulfillment    Float // percentage
+  fatFulfillment        Float // percentage
+  carbsFulfillment      Float // percentage
+  fiberFulfillment      Float // percentage
+  
+  // Analysis Results
+  nutritionScore        Float? // 0-100 overall nutrition score
+  recommendations       String? // Improvement recommendations
+  analysisDate          DateTime @default(now())
+  
+  // Relations
+  menu            Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  standard        NutritionStandard @relation(fields: [standardId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([menuId, standardId, targetAgeGroup, targetGender])
+  @@map("menu_nutrition_analyses")
+}
+
+// ================================ COST CALCULATION MODELS ================================
+
+model CostCategory {
+  id              String @id @default(cuid())
+  sppgId          String?
+  
+  name            String
+  description     String?
+  type            CostType
+  
+  // Cost Settings
+  isFixedCost     Boolean @default(false) // true = fixed, false = variable
+  defaultRate     Float? // default rate per unit
+  unit            String? // "per hour", "per kg", "per month"
+  
+  // Relations
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  costBreakdowns  CostBreakdown[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, type])
+  @@map("cost_categories")
+}
+
+model MenuCostCalculation {
+  id              String @id @default(cuid())
+  menuId          String
+  sppgId          String
+  version         Int @default(1)
+  
+  // Calculation Parameters
+  batchSize       Int // number of servings
+  calculationDate DateTime @default(now())
+  calculatedBy    String? // user ID
+  
+  // Cost Summary
+  totalIngredientCost   Float
+  totalLaborCost        Float
+  totalUtilitiesCost    Float
+  totalPackagingCost    Float
+  totalTransportCost    Float
+  totalOverheadCost     Float
+  totalOtherCost        Float
+  
+  grandTotal            Float
+  costPerServing        Float
+  
+  // Margin & Pricing
+  suggestedMargin       Float? // percentage
+  suggestedSellingPrice Float?
+  
+  // Status
+  isActive        Boolean @default(true)
+  approvedBy      String?
+  approvedAt      DateTime?
+  
+  // Relations
+  menu            Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  costBreakdowns  CostBreakdown[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([menuId, version])
+  @@index([sppgId, calculationDate])
+  @@map("menu_cost_calculations")
+}
+
+model CostBreakdown {
+  id              String @id @default(cuid())
+  calculationId   String
+  categoryId      String
+  
+  // Cost Details
+  description     String
+  quantity        Float
+  unit            String
+  unitCost        Float
+  totalCost       Float
+  
+  // Additional Info
+  notes           String?
+  
+  // Relations
+  calculation     MenuCostCalculation @relation(fields: [calculationId], references: [id], onDelete: Cascade)
+  category        CostCategory @relation(fields: [categoryId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([calculationId])
+  @@map("cost_breakdowns")
+}
+
+// ================================ SUBSCRIPTION PACKAGE MODELS ================================
+
+model SubscriptionPackage {
+  id              String @id @default(cuid())
+  
+  // Package Information
+  name            String @unique // "BASIC", "STANDARD", "PRO", "ENTERPRISE"
+  displayName     String // "Paket Dasar", "Paket Standar"
+  description     String
+  tier            SubscriptionTier
+  
+  // Pricing
+  monthlyPrice    Float
+  yearlyPrice     Float?
+  setupFee        Float @default(0)
+  
+  // Feature Limits
+  maxRecipients   Int
+  maxStaff        Int
+  maxDistributionPoints Int
+  maxMenusPerMonth      Int
+  storageGb       Int
+  maxReportsPerMonth    Int
+  
+  // Feature Flags
+  hasAdvancedReporting  Boolean @default(false)
+  hasNutritionAnalysis  Boolean @default(false)
+  hasCostCalculation    Boolean @default(false)
+  hasQualityControl     Boolean @default(false)
+  hasAPIAccess          Boolean @default(false)
+  hasCustomBranding     Boolean @default(false)
+  hasPrioritySupport    Boolean @default(false)
+  hasTrainingIncluded   Boolean @default(false)
+  
+  // Support & SLA
+  supportLevel    String // "EMAIL", "CHAT", "PHONE", "DEDICATED"
+  responseTimeSLA String? // "24 hours", "4 hours", "1 hour"
+  
+  // Availability
+  isActive        Boolean @default(true)
+  isPopular       Boolean @default(false)
+  isCustom        Boolean @default(false)
+  
+  // Marketing
+  highlightFeatures String[] // Featured benefits
+  targetMarket    String? // "Small SPPG", "Enterprise"
+  
+  // Relations
+  subscriptions   Subscription[]
+  packageFeatures SubscriptionPackageFeature[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([tier, isActive])
+  @@map("subscription_packages")
+}
+
+model SubscriptionPackageFeature {
+  id              String @id @default(cuid())
+  packageId       String
+  
+  // Feature Information
+  featureName     String
+  featureValue    String // "Unlimited", "100 per month", "Yes", "No"
+  isHighlight     Boolean @default(false)
+  category        String? // "Analytics", "Support", "Integration"
+  
+  // Display
+  displayOrder    Int @default(0)
+  description     String?
+  
+  package         SubscriptionPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  
+  @@index([packageId, displayOrder])
+  @@map("subscription_package_features")
+}
+
+// ================================ AUDIT & LOGGING MODELS ================================
+
+model AuditLog {
+  id              String @id @default(cuid())
+  
+  // Entity Information
+  entityType      String  // "Menu", "User", "SPPG", etc.
+  entityId        String  // ID of the affected entity
+  
+  // Action Information
+  action          String  // "CREATE", "UPDATE", "DELETE", "LOGIN", etc.
+  previousData    Json?   // Data sebelum perubahan
+  newData         Json?   // Data setelah perubahan
+  
+  // User Information
+  userId          String?
+  userName        String?
+  userEmail       String?
+  sppgId          String?
+  
+  // Context Information
+  ipAddress       String?
+  userAgent       String?
+  requestPath     String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([sppgId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ================================ NOTIFICATION MODELS ================================
+
+model NotificationTemplate {
+  id              String @id @default(cuid())
+  name            String @unique
+  title           String
+  content         String
+  type            NotificationType
+  
+  // Template Variables
+  variables       Json? // Array of variable names that can be replaced
+  
+  isActive        Boolean @default(true)
+  
+  notifications   Notification[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("notification_templates")
+}
+
+model Notification {
+  id              String @id @default(cuid())
+  
+  // Recipients
+  userId          String?
+  sppgId          String?
+  
+  // Content
+  templateId      String?
+  title           String
+  content         String
+  type            NotificationType
+  priority        NotificationPriority @default(NORMAL)
+  
+  // Delivery Status
+  isRead          Boolean @default(false)
+  readAt          DateTime?
+  isSent          Boolean @default(false)
+  sentAt          DateTime?
+  
+  // Context
+  relatedEntityType String?
+  relatedEntityId   String?
+  actionUrl       String?
+  
+  // Relations
+  user            User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  template        NotificationTemplate? @relation(fields: [templateId], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId, isRead])
+  @@index([sppgId, isRead])
+  @@index([type, priority])
+  @@map("notifications")
+}
+
+// ================================ FILE MANAGEMENT MODELS ================================
+
+model FileAttachment {
+  id              String @id @default(cuid())
+  
+  // File Information
+  originalName    String
+  fileName        String
+  filePath        String
+  fileSize        Int
+  mimeType        String
+  fileHash        String? // For duplicate detection
+  
+  // Context
+  entityType      String  // "Menu", "Invoice", "Production", etc.
+  entityId        String  // ID of related entity
+  category        String? // "photo", "document", "invoice", etc.
+  
+  // Metadata
+  description     String?
+  uploadedBy      String
+  sppgId          String?
+  
+  // Relations
+  uploader        User @relation(fields: [uploadedBy], references: [id])
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([entityType, entityId])
+  @@index([uploadedBy])
+  @@index([sppgId])
+  @@map("file_attachments")
+}
+
+// ================================ FEEDBACK & RATING MODELS ================================
+
+model Feedback {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Context
+  relatedType     String  // "menu", "distribution", "service", "general"
+  relatedId       String? // ID of related entity
+  date            DateTime @db.Date
+  
+  // Feedback Content
+  rating          Int     // 1-5 scale
+  title           String?
+  comment         String?
+  category        FeedbackCategory
+  
+  // Reporter Information
+  reporterName    String?
+  reporterPhone   String?
+  reporterEmail   String?
+  isAnonymous     Boolean @default(false)
+  
+  // Location
+  distributionPointId String?
+  
+  // Status
+  status          FeedbackStatus @default(OPEN)
+  responseText    String?
+  respondedBy     String?
+  respondedAt     DateTime?
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  distributionPoint DistributionPoint? @relation(fields: [distributionPointId], references: [id])
+  responder       User? @relation("FeedbackResponder", fields: [respondedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, date])
+  @@index([status])
+  @@index([category, rating])
+  @@map("feedbacks")
+}
+
+// ================================ REGIONAL DATA MODELS ================================
+
+model Province {
+  id              String @id // Official government ID
+  name            String
+  code            String @unique
+  
+  regencies       Regency[]
+  sppg            SPPG[] @relation("SPPGProvince")
+  schools         School[] @relation("SchoolProvince")
+  
+  @@map("provinces")
+}
+
+model Regency {
+  id              String @id // Official government ID
+  provinceId      String
+  name            String
+  code            String @unique
+  type            String // "KABUPATEN" or "KOTA"
+  
+  province        Province @relation(fields: [provinceId], references: [id])
+  districts       District[]
+  sppg            SPPG[] @relation("SPPGRegency")
+  schools         School[] @relation("SchoolRegency")
+  
+  @@index([provinceId])
+  @@map("regencies")
+}
+
+model District {
+  id              String @id // Official government ID
+  regencyId       String
+  name            String
+  code            String @unique
+  
+  regency         Regency @relation(fields: [regencyId], references: [id])
+  villages        Village[]
+  sppg            SPPG[] @relation("SPPGDistrict")
+  schools         School[] @relation("SchoolDistrict")
+  
+  @@index([regencyId])
+  @@map("districts")
+}
+
+model Village {
+  id              String @id // Official government ID
+  districtId      String
+  name            String
+  code            String @unique
+  
+  district        District @relation(fields: [districtId], references: [id])
+  sppg            SPPG[] @relation("SPPGVillage")
+  schools         School[] @relation("SchoolVillage")
+  
+  @@index([districtId])
+  @@map("villages")
+}
+
+// ================================ SUPPLIER MANAGEMENT MODELS ================================
+
+model Supplier {
+  id              String @id @default(cuid())
+  
+  // Basic Information
+  code            String @unique
+  name            String
+  contactPerson   String
+  phone           String
+  email           String?
+  address         String
+  
+  // Business Information
+  taxId           String? // NPWP
+  businessLicense String?
+  bankAccount     String?
+  paymentTerms    String? // "NET30", "COD", etc.
+  
+  // Status & Rating
+  status          SupplierStatus @default(PENDING_APPROVAL)
+  rating          Float? // 1-5 scale
+  totalOrders     Int @default(0)
+  totalValue      Float @default(0)
+  
+  // Certifications
+  halalCertified  Boolean @default(false)
+  haccpCertified  Boolean @default(false)
+  certificationDocs String[] // File paths
+  
+  // Relations
+  procurements    Procurement[]
+  evaluations     SupplierEvaluation[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("suppliers")
+}
+
+model SupplierEvaluation {
+  id              String @id @default(cuid())
+  supplierId      String
+  sppgId          String
+  
+  // Evaluation Period
+  period          String // "2025-Q1"
+  evaluatedBy     String
+  
+  // Ratings (1-5 scale)
+  qualityRating   Int
+  deliveryRating  Int
+  serviceRating   Int
+  priceRating     Int
+  overallRating   Float
+  
+  // Comments
+  strengths       String?
+  weaknesses      String?
+  recommendations String?
+  
+  // Relations
+  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([supplierId, period])
+  @@map("supplier_evaluations")
+}
+
+// ================================ ADVANCED INVENTORY MODELS ================================
+
+model InventoryAdjustment {
+  id              String @id @default(cuid())
+  sppgId          String
+  ingredientId    String
+  
+  // Adjustment Details
+  adjustmentType  AdjustmentType
+  quantity        Float
+  unit            Unit
+  reason          String
+  
+  // Before/After Quantities
+  quantityBefore  Float
+  quantityAfter   Float
+  
+  // Authorization
+  adjustedBy      String // User ID
+  approvedBy      String? // User ID
+  approvalDate    DateTime?
+  
+  // Reference Documents
+  referenceType   String? // "STOCK_OPNAME", "DAMAGE_REPORT", etc.
+  referenceId     String?
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  adjuster        User @relation("AdjustmentAdjuster", fields: [adjustedBy], references: [id])
+  approver        User? @relation("AdjustmentApprover", fields: [approvedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([sppgId, ingredientId])
+  @@index([adjustmentType])
+  @@map("inventory_adjustments")
+}
+
+// ================================ QUALITY CONTROL MODELS ================================
+
+model QualityCheck {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Check Context
+  entityType      String // "INGREDIENT", "PRODUCTION", "DISTRIBUTION"
+  entityId        String // ID of related entity
+  checkType       String // "INCOMING", "PRODUCTION", "OUTGOING"
+  
+  // Check Details
+  checkDate       DateTime @default(now())
+  checkedBy       String // User ID
+  status          QualityCheckStatus
+  
+  // Quality Parameters
+  temperature     Float?
+  humidity        Float?
+  ph              Float?
+  visualCheck     String? // "GOOD", "ACCEPTABLE", "POOR"
+  tasteCheck      String?
+  smellCheck      String?
+  textureCheck    String?
+  
+  // Results
+  passed          Boolean
+  score           Float? // Overall quality score
+  notes           String?
+  correctionActions String?
+  
+  // Photos/Evidence
+  evidenceFiles   String[] // File paths
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  checker         User @relation("QualityChecker", fields: [checkedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, entityType, entityId])
+  @@index([checkDate])
+  @@map("quality_checks")
+}
+
+// ================================ ADDITIONAL ENUMS ================================
+
+enum NotificationType {
+  INFO               // Informasi
+  WARNING            // Peringatan
+  ERROR              // Error
+  SUCCESS            // Berhasil
+  REMINDER           // Pengingat
+  SYSTEM             // System
+  PROCUREMENT        // Pengadaan
+  PRODUCTION         // Produksi
+  DISTRIBUTION       // Distribusi
+  BILLING            // Billing
+}
+
+enum NotificationPriority {
+  LOW                // Rendah
+  NORMAL             // Normal
+  HIGH               // Tinggi
+  URGENT             // Mendesak
+}
+
+enum FeedbackCategory {
+  FOOD_QUALITY       // Kualitas Makanan
+  FOOD_TASTE         // Rasa Makanan
+  PORTION_SIZE       // Ukuran Porsi
+  DELIVERY_TIME      // Waktu Pengiriman
+  STAFF_SERVICE      // Pelayanan Staff
+  HYGIENE            // Kebersihan
+  PACKAGING          // Kemasan
+  GENERAL            // Umum
+  COMPLAINT          // Keluhan
+  SUGGESTION         // Saran
+}
+
+enum FeedbackStatus {
+  OPEN               // Terbuka
+  IN_PROGRESS        // Sedang Ditangani
+  RESOLVED           // Selesai
+  CLOSED             // Ditutup
+  ESCALATED          // Dieskalan
+}
+
+enum AgeGroup {
+  INFANT_0_6_MONTHS    // Bayi 0-6 bulan
+  INFANT_7_11_MONTHS   // Bayi 7-11 bulan
+  TODDLER_1_3_YEARS    // Balita 1-3 tahun
+  CHILD_4_6_YEARS      // Anak 4-6 tahun
+  CHILD_7_9_YEARS      // Anak 7-9 tahun
+  CHILD_10_12_YEARS    // Anak 10-12 tahun
+  TEEN_13_15_YEARS     // Remaja 13-15 tahun
+  TEEN_16_18_YEARS     // Remaja 16-18 tahun
+  ADULT_19_29_YEARS    // Dewasa 19-29 tahun
+  ADULT_30_49_YEARS    // Dewasa 30-49 tahun
+  ADULT_50_64_YEARS    // Dewasa 50-64 tahun
+  ELDERLY_65_PLUS      // Lansia 65+ tahun
+  PREGNANT             // Ibu Hamil
+  LACTATING            // Ibu Menyusui
+}
+
+enum CostType {
+  INGREDIENT           // Bahan Baku
+  LABOR               // Tenaga Kerja
+  UTILITIES           // Utilitas (listrik, gas, air)
+  PACKAGING           // Kemasan
+  TRANSPORTATION      // Transportasi
+  OVERHEAD            // Overhead
+  EQUIPMENT           // Peralatan
+  OTHER               // Lainnya
+}
+
+enum SupplierStatus {
+  ACTIVE             // Aktif
+  INACTIVE           // Nonaktif
+  BLACKLISTED        // Blacklist
+  PENDING_APPROVAL   // Menunggu Persetujuan
+}
+
+enum QualityCheckStatus {
+  PASSED             // Lulus
+  FAILED             // Gagal
+  CONDITIONAL        // Bersyarat
+  PENDING            // Menunggu
+}
+
+enum AdjustmentType {
+  INCREASE           // Penambahan
+  DECREASE           // Pengurangan
+  TRANSFER           // Transfer
+  DAMAGED            // Rusak
+  EXPIRED            // Kadaluarsa
+  LOST               // Hilang
+  COUNT_ADJUSTMENT   // Penyesuaian Hitung
+}
+
+// ================================ QUALITY ASSURANCE MODELS ================================
+
+model QualityControlChecklist {
+  id              String @id @default(cuid())
+  sppgId          String
+  name            String
+  description     String?
+  checkType       QualityCheckType
+  
+  // Checklist Details
+  isRequired      Boolean @default(true)
+  frequency       String // "DAILY", "WEEKLY", "MONTHLY", "PER_BATCH"
+  riskLevel       QualityRiskLevel
+  
+  // Standards & Criteria
+  criteria        Json // Detailed criteria for each check
+  acceptableLimits Json? // Min/max values, temperature ranges, etc
+  
+  // Compliance
+  isRegulatory    Boolean @default(false) // Required by regulation
+  regulationRef   String? // Reference to specific regulation
+  
+  // Status
+  isActive        Boolean @default(true)
+  version         Int @default(1)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  qualityAssuranceChecks QualityAssuranceCheck[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, checkType, isActive])
+  @@map("quality_control_checklists")
+}
+
+model QualityAssuranceCheck {
+  id              String @id @default(cuid())
+  sppgId          String
+  checklistId     String
+  checkDate       DateTime @default(now())
+  
+  // Reference Data
+  menuId          String? // If related to specific menu
+  batchNumber     String? // Production batch
+  ingredientId    String? // If checking specific ingredient
+  facilityArea    String? // Kitchen, storage, delivery vehicle, etc
+  
+  // Check Details
+  checkedBy       String // Staff ID
+  supervisedBy    String? // Supervisor ID
+  status          QualityAssuranceStatus
+  
+  // Results
+  score           Float? // 0-100 score
+  findings        Json // Detailed findings
+  temperature     Float? // For temperature checks
+  measurements    Json? // Other measurements
+  
+  // Issues & Actions
+  issues          String[] // List of issues found
+  correctiveActions String[] // Actions taken
+  followUpRequired Boolean @default(false)
+  followUpDate    DateTime?
+  
+  // Risk Assessment
+  riskLevel       QualityRiskLevel
+  riskNotes       String?
+  
+  // Documentation
+  photos          String[] // Photo URLs
+  documents       String[] // Document URLs
+  
+  // Compliance
+  isCompliant     Boolean
+  regulationStatus String? // COMPLIANT, NON_COMPLIANT, CONDITIONAL
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  checklist       QualityControlChecklist @relation(fields: [checklistId], references: [id])
+  menu            Menu? @relation(fields: [menuId], references: [id])
+  ingredient      Ingredient? @relation(fields: [ingredientId], references: [id])
+  checker         Staff @relation("QualityChecker", fields: [checkedBy], references: [id])
+  supervisor      Staff? @relation("QualitySupervisor", fields: [supervisedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, checkDate, status])
+  @@index([checklistId, status])
+  @@index([riskLevel, isCompliant])
+  @@map("quality_assurance_checks")
+}
+
+model ProductSafetyCertification {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Certification Details
+  certificateName String
+  certificateType String // "HACCP", "HALAL", "ISO", "BPOM", etc
+  issuingAuthority String
+  certificateNumber String @unique
+  
+  // Validity
+  issueDate       DateTime
+  expiryDate      DateTime
+  status          CertificationStatus
+  
+  // Requirements
+  requirements    Json // Detailed requirements
+  auditFrequency  String // Required audit frequency
+  lastAuditDate   DateTime?
+  nextAuditDate   DateTime
+  
+  // Documents
+  certificateFile String? // PDF/image URL
+  auditReports    String[] // Audit report URLs
+  
+  // Compliance Tracking
+  complianceScore Float? // 0-100
+  lastComplianceCheck DateTime?
+  nonConformities String[] // List of non-conformities
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, status, expiryDate])
+  @@index([certificateType, status])
+  @@map("product_safety_certifications")
+}
+
+model QualityIncident {
+  id              String @id @default(cuid())
+  sppgId          String
+  incidentNumber  String @unique
+  
+  // Incident Details
+  incidentDate    DateTime
+  reportedDate    DateTime @default(now())
+  reportedBy      String // Staff ID
+  
+  // Classification
+  incidentType    String // "CONTAMINATION", "ALLERGIC_REACTION", "FOREIGN_OBJECT", etc
+  severity        QualityRiskLevel
+  affectedProducts String[] // Menu/batch IDs
+  affectedPersons Int? // Number of people affected
+  
+  // Description
+  description     String
+  symptoms        String? // If health-related
+  rootCause       String?
+  
+  // Investigation
+  investigatedBy  String? // Staff ID
+  investigationNotes String?
+  investigationStatus String // "PENDING", "IN_PROGRESS", "COMPLETED"
+  
+  // Actions
+  immediateActions String[]
+  correctiveActions String[]
+  preventiveActions String[]
+  
+  // Status & Resolution
+  status          String // "OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"
+  resolutionDate  DateTime?
+  resolutionNotes String?
+  
+  // Regulatory
+  reportedToAuthority Boolean @default(false)
+  authorityReference String?
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  reporter        Staff @relation("IncidentReporter", fields: [reportedBy], references: [id])
+  investigator    Staff? @relation("IncidentInvestigator", fields: [investigatedBy], references: [id])
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, incidentDate, severity])
+  @@index([status, severity])
+  @@map("quality_incidents")
+}
+
+// ================================ ADVANCED ANALYTICS MODELS ================================
+
+model AnalyticsDashboard {
+  id              String @id @default(cuid())
+  sppgId          String
+  name            String
+  description     String?
+  dashboardType   DashboardType
+  
+  // Configuration
+  config          Json // Dashboard layout and widget configuration
+  filters         Json? // Default filters
+  refreshInterval Int @default(300) // Seconds
+  
+  // Access Control
+  isPublic        Boolean @default(false)
+  allowedRoles    String[] // Role IDs that can access
+  createdBy       String // User ID
+  
+  // Status
+  isActive        Boolean @default(true)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  creator         User @relation("DashboardCreator", fields: [createdBy], references: [id])
+  widgets         AnalyticsWidget[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, dashboardType, isActive])
+  @@map("analytics_dashboards")
+}
+
+model AnalyticsWidget {
+  id              String @id @default(cuid())
+  dashboardId     String
+  name            String
+  widgetType      String // "CHART", "TABLE", "METRIC", "GAUGE", etc
+  
+  // Configuration
+  config          Json // Widget-specific configuration
+  dataSource      String // Source of data
+  query           Json // Query parameters
+  
+  // Display
+  position        Json // {x, y, width, height}
+  title           String
+  description     String?
+  
+  // Status
+  isActive        Boolean @default(true)
+  
+  // Relations
+  dashboard       AnalyticsDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([dashboardId, isActive])
+  @@map("analytics_widgets")
+}
+
+model KPITracking {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // KPI Definition
+  kpiName         String
+  kpiType         AnalyticsMetricType
+  description     String?
+  category        String // "PRODUCTION", "QUALITY", "FINANCIAL", "OPERATIONAL"
+  
+  // Measurement
+  unit            String // "percentage", "count", "currency", "ratio"
+  calculationMethod String // How to calculate this KPI
+  
+  // Targets
+  targetValue     Float
+  minAcceptable   Float?
+  maxAcceptable   Float?
+  
+  // Time Period
+  measurementPeriod String // "DAILY", "WEEKLY", "MONTHLY", "QUARTERLY"
+  
+  // Status
+  isActive        Boolean @default(true)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  measurements    KPIMeasurement[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, kpiName])
+  @@index([sppgId, kpiType, isActive])
+  @@map("kpi_tracking")
+}
+
+model KPIMeasurement {
+  id              String @id @default(cuid())
+  kpiId           String
+  
+  // Measurement Data
+  measurementDate DateTime @db.Date
+  actualValue     Float
+  targetValue     Float
+  
+  // Performance
+  variance        Float // Actual - Target
+  variancePercent Float // (Actual - Target) / Target * 100
+  status          String // "ABOVE_TARGET", "ON_TARGET", "BELOW_TARGET"
+  
+  // Context
+  notes           String?
+  factors         String[] // Factors that influenced the result
+  
+  // Relations
+  kpi             KPITracking @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([kpiId, measurementDate])
+  @@index([kpiId, measurementDate])
+  @@map("kpi_measurements")
+}
+
+model PredictiveAnalytics {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Prediction Details
+  predictionType  String // "DEMAND_FORECAST", "COST_PREDICTION", "QUALITY_RISK"
+  modelName       String
+  modelVersion    String
+  
+  // Prediction Period
+  forecastDate    DateTime @db.Date
+  predictionMade  DateTime @default(now())
+  confidenceLevel Float // 0-100
+  
+  // Results
+  predictions     Json // Detailed predictions
+  accuracy        Float? // When actual data is available
+  
+  // Context
+  inputData       Json // Data used for prediction
+  assumptions     String[]
+  limitations     String[]
+  
+  // Status
+  isActive        Boolean @default(true)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, predictionType, forecastDate])
+  @@map("predictive_analytics")
+}
+
+// ================================ APPLICATION SETTINGS MODELS ================================
+
+model SystemSetting {
+  id              String @id @default(cuid())
+  
+  // Setting Details
+  key             String @unique
+  value           String
+  dataType        String // "string", "number", "boolean", "json"
+  category        String // "GENERAL", "EMAIL", "PAYMENT", "SECURITY", etc
+  
+  // Metadata
+  name            String
+  description     String?
+  isPublic        Boolean @default(false) // Can be read by SPPG users
+  isEditable      Boolean @default(true)  // Can be modified
+  
+  // Validation
+  validationRules Json?   // Min/max values, regex patterns, etc
+  defaultValue    String?
+  
+  // System
+  version         Int @default(1)
+  isActive        Boolean @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([category, isActive])
+  @@map("system_settings")
+}
+
+model SppgSetting {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Setting Details
+  key             String
+  value           String
+  dataType        String // "string", "number", "boolean", "json"
+  category        String // "OPERATIONS", "NOTIFICATIONS", "PREFERENCES", etc
+  
+  // Metadata
+  name            String
+  description     String?
+  
+  // Inheritance from system settings
+  systemDefault   String? // Default value from SystemSetting
+  isCustomized    Boolean @default(false) // True if different from system default
+  
+  // Validation
+  validationRules Json?
+  
+  // Status
+  isActive        Boolean @default(true)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, key])
+  @@index([sppgId, category])
+  @@map("sppg_settings")
+}
+
+model FeatureFlag {
+  id              String @id @default(cuid())
+  
+  // Feature Details
+  name            String @unique
+  key             String @unique // "advanced_analytics", "ai_predictions", etc
+  description     String?
+  
+  // Status
+  isEnabled       Boolean @default(false)
+  isStable        Boolean @default(true)  // False for beta features
+  
+  // Rollout Control
+  rolloutPercent  Int @default(0) // 0-100, percentage of users who see this feature
+  allowedTiers    SubscriptionTier[] // Which subscription tiers can access
+  
+  // Target Audience
+  targetUserTypes UserType[] // SUPERADMIN, SPPG_USER
+  specificSppgIds String[] // Specific SPPGs for testing
+  
+  // Metadata
+  launchDate      DateTime?
+  deprecationDate DateTime?
+  
+  // Relations
+  featureAccess   SppgFeatureAccess[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([isEnabled, isStable])
+  @@map("feature_flags")
+}
+
+model SppgFeatureAccess {
+  id              String @id @default(cuid())
+  sppgId          String
+  featureFlagId   String
+  
+  // Access Control
+  isEnabled       Boolean @default(true)
+  enabledBy       String? // User ID who enabled
+  enabledAt       DateTime @default(now())
+  
+  // Usage Tracking
+  firstUsed       DateTime?
+  lastUsed        DateTime?
+  usageCount      Int @default(0)
+  
+  // Feedback
+  rating          Int? // 1-5
+  feedback        String?
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  featureFlag     FeatureFlag @relation(fields: [featureFlagId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([sppgId, featureFlagId])
+  @@index([sppgId, isEnabled])
+  @@map("sppg_feature_access")
+}
+
+// ================================ API & INTEGRATION MODELS ================================
+
+model ApiKey {
+  id              String @id @default(cuid())
+  sppgId          String?
+  
+  // Key Details
+  name            String
+  keyHash         String @unique // Hashed API key
+  keyPreview      String // Last 4 characters for display
+  
+  // Permissions
+  permissions     String[] // Array of allowed actions
+  allowedIps      String[] // IP whitelist
+  rateLimit       Int @default(1000) // Requests per hour
+  
+  // Status
+  isActive        Boolean @default(true)
+  expiresAt       DateTime?
+  lastUsed        DateTime?
+  usageCount      Int @default(0)
+  
+  // Relations
+  sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, isActive])
+  @@map("api_keys")
+}
+
+model WebhookEndpoint {
+  id              String @id @default(cuid())
+  sppgId          String
+  
+  // Endpoint Details
+  name            String
+  url             String
+  secret          String // For signature verification
+  
+  // Configuration
+  events          String[] // Which events to send
+  isActive        Boolean @default(true)
+  
+  // Delivery Settings
+  retryAttempts   Int @default(3)
+  timeoutSeconds  Int @default(30)
+  
+  // Statistics
+  lastTriggered   DateTime?
+  successCount    Int @default(0)
+  failureCount    Int @default(0)
+  
+  // Relations
+  sppg            SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  deliveries      WebhookDelivery[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sppgId, isActive])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id              String @id @default(cuid())
+  endpointId      String
+  
+  // Delivery Details
+  eventType       String
+  payload         Json
+  httpStatus      Int?
+  
+  // Timing
+  deliveredAt     DateTime?
+  responseTime    Int? // Milliseconds
+  
+  // Status
+  status          String // "PENDING", "DELIVERED", "FAILED", "RETRYING"
+  attemptCount    Int @default(0)
+  errorMessage    String?
+  
+  // Relations
+  endpoint        WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([endpointId, status])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+// ================================ MOBILE & OFFLINE TIMEZONE MODELS ================================
+
+model MobileSession {
+  id                  String @id @default(cuid())
+  userId              String
+  sppgId              String
+  
+  // Timezone Context
+  deviceTimezone      String // Device detected timezone
+  sppgTimezone        String // SPPG configured timezone  
+  timezoneOffset      Int    // UTC offset at session time
+  
+  // Session Data
+  sessionStart        DateTime @default(now()) // UTC
+  sessionEnd          DateTime? // UTC
+  localSessionStart   String // Local time representation
+  localSessionEnd     String? // Local time representation
+  
+  // Location & Connectivity
+  lastKnownLocation   Json? // GPS coordinates
+  isOnline            Boolean @default(true)
+  connectionQuality   String? // "EXCELLENT", "GOOD", "POOR", "OFFLINE"
+  
+  // Device Information
+  deviceInfo          Json? // Device model, OS, app version
+  batteryLevel        Int? // Battery percentage
+  
+  // Relations
+  user                User @relation(fields: [userId], references: [id])
+  sppg                SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  offlineActions      OfflineAction[]
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([sppgId, sessionStart])
+  @@index([userId, isOnline])
+  @@map("mobile_sessions")
+}
+
+model OfflineAction {
+  id                  String @id @default(cuid())
+  userId              String
+  sppgId              String
+  sessionId           String?
+  
+  // Action Context
+  actionType          String // "CREATE", "UPDATE", "DELETE"
+  entityType          String // "Menu", "Attendance", "QualityCheck", etc
+  entityId            String?
+  
+  // Timezone Context
+  localTimestamp      String // Local time when action occurred
+  deviceTimezone      String // Device timezone
+  sppgTimezone        String // SPPG timezone
+  utcTimestamp        DateTime @default(now()) // When queued
+  
+  // Data
+  actionData          Json // The actual data changes
+  originalData        Json? // Original data before change
+  conflictResolution  String? // How conflicts were resolved
+  
+  // Sync Status
+  isSynced            Boolean @default(false)
+  syncedAt            DateTime?
+  syncAttempts        Int @default(0)
+  lastSyncError       String?
+  syncPriority        String @default("NORMAL") // "HIGH", "NORMAL", "LOW"
+  
+  // Validation
+  dataChecksum        String? // For data integrity
+  isValid             Boolean @default(true)
+  validationErrors    String[]
+  
+  // Relations
+  user                User @relation(fields: [userId], references: [id])
+  sppg                SPPG @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  session             MobileSession? @relation(fields: [sessionId], references: [id])
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([sppgId, isSynced])
+  @@index([userId, actionType])
+  @@index([syncPriority, isSynced])
+  @@map("offline_actions")
+}
+
+model TimezoneLog {
+  id                  String @id @default(cuid())
+  sppgId              String?
+  userId              String?
+  
+  // Timezone Change Event
+  eventType           String // "SPPG_TIMEZONE_CHANGE", "USER_PREFERENCE_CHANGE", "AUTO_DETECTION"
+  oldTimezone         String?
+  newTimezone         String
+  changeReason        String? // "RELOCATION", "USER_PREFERENCE", "SYSTEM_UPDATE"
+  
+  // Context
+  affectedRecords     Int? // Number of records affected
+  migrationStatus     String? // "PENDING", "IN_PROGRESS", "COMPLETED", "FAILED"
+  
+  // Metadata
+  changedBy           String? // User ID who made the change
+  systemGenerated     Boolean @default(false)
+  
+  // Relations
+  sppg                SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
+  user                User? @relation(fields: [userId], references: [id])
+  
+  createdAt           DateTime @default(now())
+  
+  @@index([sppgId, eventType])
+  @@index([createdAt])
+  @@map("timezone_logs")
+}

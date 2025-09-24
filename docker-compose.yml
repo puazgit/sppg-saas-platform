@@ -1,0 +1,95 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: sppg-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sppg_saas_platform
+      POSTGRES_USER: sppg_admin
+      POSTGRES_PASSWORD: sppg_secure_2025
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - sppg-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sppg_admin -d sppg_saas_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (for sessions and caching)
+  redis:
+    image: redis:7-alpine
+    container_name: sppg-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass redis_sppg_2025
+    volumes:
+      - redis_data:/data
+    networks:
+      - sppg-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Adminer (Database Management UI)
+  adminer:
+    image: adminer:latest
+    container_name: sppg-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    networks:
+      - sppg-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # MinIO (Local S3-compatible storage for file uploads)
+  minio:
+    image: minio/minio:latest
+    container_name: sppg-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: sppg_minio_admin
+      MINIO_ROOT_PASSWORD: sppg_minio_secure_2025
+    volumes:
+      - minio_data:/data
+    networks:
+      - sppg-network
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+    name: sppg_postgres_data
+  redis_data:
+    driver: local
+    name: sppg_redis_data
+  minio_data:
+    driver: local
+    name: sppg_minio_data
+
+networks:
+  sppg-network:
+    driver: bridge
+    name: sppg-network
