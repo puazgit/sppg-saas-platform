@@ -2,14 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { userHasPermission, isSuperAdmin, getUserWithRolesAndPermissions } from './rbac'
 
-export interface AuthUser {
-  id: string
-  email: string
-  name: string
-  userType: 'SUPERADMIN' | 'SPPG_USER'
-  sppgId?: string
-}
-
 /**
  * Middleware untuk memeriksa apakah user memiliki permission tertentu
  */
@@ -69,11 +61,21 @@ export function requireSuperAdmin() {
       if (!isSuper) {
         return NextResponse.json({ 
           error: 'Forbidden', 
-          message: 'Akses terbatas untuk SuperAdmin' 
+          message: 'Hanya SuperAdmin yang bisa mengakses resource ini' 
         }, { status: 403 })
       }
 
-      return NextResponse.next()
+      // Add user info to request headers
+      const userInfo = await getUserWithRolesAndPermissions(token.sub)
+      const response = NextResponse.next()
+      
+      if (userInfo) {
+        response.headers.set('x-user-id', userInfo.id)
+        response.headers.set('x-user-email', userInfo.email)
+        response.headers.set('x-user-type', userInfo.userType)
+      }
+
+      return response
     } catch (error) {
       console.error('SuperAdmin authorization error:', error)
       return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -82,60 +84,13 @@ export function requireSuperAdmin() {
 }
 
 /**
- * Middleware untuk memeriksa apakah user adalah member dari SPPG tertentu
+ * Utility untuk mendapatkan user dari request headers (setelah middleware)
  */
-export function requireSppgMember(sppgId?: string) {
-  return async (req: NextRequest) => {
-    try {
-      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-      
-      if (!token || !token.sub) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-
-      const userInfo = await getUserWithRolesAndPermissions(token.sub)
-      
-      if (!userInfo) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
-      }
-
-      // SuperAdmin dapat mengakses semua SPPG
-      if (userInfo.userType === 'SUPERADMIN') {
-        return NextResponse.next()
-      }
-
-      // Jika sppgId dispecify, check apakah user adalah member dari SPPG tersebut
-      if (sppgId && userInfo.sppgId !== sppgId) {
-        return NextResponse.json({ 
-          error: 'Forbidden', 
-          message: 'Anda tidak memiliki akses ke SPPG ini' 
-        }, { status: 403 })
-      }
-
-      // Jika tidak ada sppgId specified, pastikan user punya SPPG
-      if (!sppgId && !userInfo.sppgId) {
-        return NextResponse.json({ 
-          error: 'Forbidden', 
-          message: 'Anda tidak terdaftar di SPPG manapun' 
-        }, { status: 403 })
-      }
-
-      return NextResponse.next()
-    } catch (error) {
-      console.error('SPPG member authorization error:', error)
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
-    }
-  }
-}
-
-/**
- * Helper untuk mendapatkan user info dari request headers yang diset oleh middleware
- */
-export function getUserFromHeaders(req: NextRequest): AuthUser | null {
+export function getUserFromHeaders(req: NextRequest) {
   const userId = req.headers.get('x-user-id')
-  const userEmail = req.headers.get('x-user-email')
-  const userName = req.headers.get('x-user-name')
+  const userEmail = req.headers.get('x-user-email') 
   const userType = req.headers.get('x-user-type') as 'SUPERADMIN' | 'SPPG_USER'
+  const userName = req.headers.get('x-user-name')
   const sppgId = req.headers.get('x-user-sppg-id')
 
   if (!userId || !userEmail || !userType) {
