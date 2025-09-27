@@ -12,6 +12,52 @@ export async function GET(
 ) {
   try {
     const subscriptionId = params.id
+    console.log(`[API] Getting subscription data for ID: ${subscriptionId}`)
+
+    // If subscriptionId is demo or invalid, return mock data
+    if (subscriptionId === 'demo-subscription' || !subscriptionId) {
+      console.log('[API] Using mock data for demo subscription')
+      return NextResponse.json({
+        success: true,
+        data: {
+          subscriptionId: 'demo-subscription',
+          sppgId: 'SPPG-DEMO-001',
+          organizationName: 'SPPG Demo Organization',
+          packageName: 'STANDARD Package',
+          activationStatus: 'ACTIVE',
+          invoice: {
+            id: 'INV-DEMO-001',
+            invoiceNumber: 'INV-DEMO-001',
+            amount: 2500000,
+            paidAt: new Date(),
+            paymentMethod: 'Bank Transfer',
+            status: 'COMPLETED'
+          },
+          account: {
+            adminEmail: 'admin@demo-sppg.com',
+            loginUrl: '/sppg/login',
+            tempPassword: 'Welcome2024!',
+            setupRequired: true
+          },
+          sppg: {
+            id: 'sppg-demo-001',
+            code: 'SPPG-DEMO-001',
+            name: 'SPPG Demo Organization',
+            email: 'admin@demo-sppg.com',
+            phone: '021-12345678',
+            address: 'Jl. Demo No. 123',
+            status: 'ACTIVE'
+          },
+          package: {
+            id: 'pkg-standard',
+            name: 'STANDARD Package',
+            tier: 'STANDARD',
+            monthlyPrice: 250000,
+            setupFee: 500000
+          }
+        }
+      })
+    }
 
     // Get subscription with related data
     const subscription = await prisma.subscription.findUnique({
@@ -41,22 +87,11 @@ export async function GET(
             features: true,
           }
         },
-        invoices: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            id: true,
-            invoiceNumber: true,
-            totalAmount: true,
-            status: true,
-            paymentMethod: true,
-            paymentReference: true,
-            paidDate: true,
-            createdAt: true,
-          }
-        }
+
       }
     })
+
+    console.log(`[API] Found subscription:`, subscription ? 'YES' : 'NO')
 
     if (!subscription) {
       return NextResponse.json(
@@ -65,7 +100,23 @@ export async function GET(
       )
     }
 
-    const latestInvoice = subscription.invoices[0]
+    // Get latest invoice for the SPPG
+    const latestInvoice = await prisma.invoice.findFirst({
+      where: { sppgId: subscription.sppgId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        totalAmount: true,
+        status: true,
+        paymentMethod: true,
+        paymentReference: true,
+        paidDate: true,
+        createdAt: true,
+      }
+    })
+
+    console.log(`[API] Found invoice:`, latestInvoice ? 'YES' : 'NO')
 
     // Format response data for SuccessStep
     const successData = {

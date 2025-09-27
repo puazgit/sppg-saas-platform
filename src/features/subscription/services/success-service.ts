@@ -22,6 +22,7 @@ export class SuccessService {
       })
 
       if (!response.ok) {
+        console.error(`[API] HTTP error! status: ${response.status}`)
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
