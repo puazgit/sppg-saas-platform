@@ -1,21 +1,5 @@
 /**
- * Success Page Compone  const loadSuccessData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      const [success, onboarding] = await Promise.all([
-        SuccessService.getSuccessData(subscriptionId),
-        SuccessService.getOnboardingSteps(`SPPG-${Date.now()}`)
-      ]);
-      
-      setSuccessData(success);
-      setOnboardingSteps(onboarding);
-    } catch (error) {
-      console.error('Error loading success data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [subscriptionId]);ve success flow with account activation and onboarding
+ * Success Page Component - Comprehensive success flow with account activation and onboarding
  */
 
 'use client';
