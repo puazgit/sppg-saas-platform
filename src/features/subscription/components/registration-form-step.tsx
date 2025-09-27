@@ -38,6 +38,8 @@ import {
 
 import { useSubscriptionStore } from '../store/subscription.store'
 import { registrationDataSchema, type RegistrationData } from '../schemas/subscription.schema'
+import { usePackageValidation } from '../lib/package-validation'
+import PackageValidationAlert, { FieldValidationFeedback } from './package-validation-alert'
 
 // ================================================================================
 // ENTERPRISE TYPE DEFINITIONS
@@ -133,7 +135,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
   // ================================
   // ENTERPRISE STATE MANAGEMENT
   // ================================
-  const { registrationData, setRegistrationData, isLoading, selectedPackage } = useSubscriptionStore()
+  const { registrationData, setRegistrationData, isLoading, selectedPackage, upgradePackage } = useSubscriptionStore()
   
   // Multi-level state management
   const [currentStep, setCurrentStep] = useState<number>(1)
@@ -182,6 +184,10 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
 
   // Destructure form methods for use in components
   const { register, watch, setValue, control, getValues, formState: { errors } } = form
+  
+  // Package validation integration (after form is created)
+  const watchedData = watch()
+  const packageValidation = usePackageValidation(watchedData, selectedPackage)
 
   // ================================
   // ENTERPRISE VALIDATION ENGINE
@@ -224,8 +230,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
     const progress = requiredFieldsCount === 0 ? 100 : Math.round(((requiredFieldsCount - missingFields.length) / requiredFieldsCount) * 100)
     const isValid = missingFields.length === 0
 
-
-
+    // Package compatibility will be handled separately in the UI
     return {
       isValid,
       requiredFields,
@@ -1079,6 +1084,10 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                     {errors.targetRecipients.message}
                   </p>
                 )}
+                <FieldValidationFeedback
+                  fieldValidation={packageValidation.validateField('targetRecipients', watchedData.targetRecipients)}
+                  className="mt-2"
+                />
               </div>
 
               <div>
@@ -1100,6 +1109,10 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                     {errors.maxRadius.message}
                   </p>
                 )}
+                <FieldValidationFeedback
+                  fieldValidation={packageValidation.validateField('maxRadius', watchedData.maxRadius)}
+                  className="mt-2"
+                />
               </div>
 
               <div>
@@ -1352,6 +1365,14 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
         <CardContent className="p-8">
           <div className="space-y-8">
             {renderStepHeader()}
+            
+            {/* Package Validation Alert */}
+            <PackageValidationAlert
+              validationResult={packageValidation.validation}
+              selectedPackage={selectedPackage}
+              onUpgrade={upgradePackage}
+              className="mb-6"
+            />
             
             <AnimatePresence mode="wait">
               <motion.div

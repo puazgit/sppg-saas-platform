@@ -9,6 +9,27 @@ import { PaymentData } from '../types/payment'
 import { RegistrationData } from '../schemas/subscription.schema'
 import { SubscriptionPackage } from '../services/subscription-api'
 
+// Helper functions for package upgrade
+const getMaxRecipientsByTier = (tier: string): number => {
+  const limits = { 'BASIC': 500, 'STANDARD': 2000, 'PRO': 10000, 'ENTERPRISE': 50000 }
+  return limits[tier as keyof typeof limits] || 500
+}
+
+const getMaxStaffByTier = (tier: string): number => {
+  const limits = { 'BASIC': 5, 'STANDARD': 15, 'PRO': 50, 'ENTERPRISE': 200 }
+  return limits[tier as keyof typeof limits] || 5
+}
+
+const getMaxDistributionPointsByTier = (tier: string): number => {
+  const limits = { 'BASIC': 3, 'STANDARD': 10, 'PRO': 25, 'ENTERPRISE': 100 }
+  return limits[tier as keyof typeof limits] || 3
+}
+
+const getPricingByTier = (tier: string): number => {
+  const pricing = { 'BASIC': 125000, 'STANDARD': 250000, 'PRO': 500000, 'ENTERPRISE': 1000000 }
+  return pricing[tier as keyof typeof pricing] || 125000
+}
+
 // Subscription State Interface
 interface SubscriptionState {
   // Current state
@@ -45,6 +66,7 @@ interface SubscriptionActions {
   
   // Data management
   setPackage: (pkg: SubscriptionPackage | null) => void
+  upgradePackage: (targetTier: string) => void
   setRegistrationData: (data: Partial<RegistrationData>) => void
   updateRegistrationField: (field: keyof RegistrationData, value: unknown) => void
   setPaymentData: (data: PaymentData) => void
@@ -130,6 +152,33 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             selectedPackage: pkg,
             lastSaved: new Date()
           }, false, 'setPackage')
+        },
+
+        // Package upgrade handler
+        upgradePackage: (targetTier: string) => {
+          const { selectedPackage } = get()
+          
+          // Find the target package by tier
+          // This should integrate with your package API service
+          const mockUpgradePackage = {
+            ...selectedPackage,
+            tier: targetTier,
+            name: `SPPG ${targetTier}`,
+            displayName: targetTier,
+            maxRecipients: getMaxRecipientsByTier(targetTier),
+            maxStaff: getMaxStaffByTier(targetTier),
+            maxDistributionPoints: getMaxDistributionPointsByTier(targetTier),
+            monthlyPrice: getPricingByTier(targetTier),
+            hasAdvancedReporting: ['PRO', 'ENTERPRISE'].includes(targetTier),
+            hasAPIAccess: ['PRO', 'ENTERPRISE'].includes(targetTier),
+            hasNutritionAnalysis: ['STANDARD', 'PRO', 'ENTERPRISE'].includes(targetTier),
+            hasQualityControl: ['PRO', 'ENTERPRISE'].includes(targetTier),
+          } as SubscriptionPackage
+
+          set({ 
+            selectedPackage: mockUpgradePackage,
+            lastSaved: new Date()
+          }, false, 'upgradePackage')
         },
 
         setRegistrationData: (data: Partial<RegistrationData>) => {
