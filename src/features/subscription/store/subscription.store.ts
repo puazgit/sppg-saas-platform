@@ -50,6 +50,7 @@ interface SubscriptionState {
   
   // Session data
   sessionId: string | null
+  subscriptionId: string | null
   
   // Draft saving
   isDraft: boolean
@@ -70,6 +71,7 @@ interface SubscriptionActions {
   setRegistrationData: (data: Partial<RegistrationData>) => void
   updateRegistrationField: (field: keyof RegistrationData, value: unknown) => void
   setPaymentData: (data: PaymentData) => void
+  setSubscriptionId: (id: string | null) => void
   
   // UI state
   setLoading: (loading: boolean) => void
@@ -109,6 +111,7 @@ const initialState: SubscriptionState = {
   validationErrors: {},
   completedSteps: [],
   sessionId: null,
+  subscriptionId: null,
   isDraft: false,
   lastSaved: null
 }
@@ -207,6 +210,13 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             paymentData: data,
             lastSaved: new Date()
           }, false, 'setPaymentData')
+        },
+
+        setSubscriptionId: (id: string | null) => {
+          set({ 
+            subscriptionId: id,
+            lastSaved: new Date()
+          }, false, 'setSubscriptionId')
         },
 
         // UI state

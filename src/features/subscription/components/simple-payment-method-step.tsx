@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Building2, Upload, ArrowRight, ArrowLeft, Copy,
-  CheckCircle, Info, FileImage, X, Clock, Shield
+  CheckCircle, Info, FileImage, X, Clock, Shield, Loader2 as Loader
 } from 'lucide-react'
 
 import { useSubscriptionStore } from '../store/subscription.store'
@@ -63,13 +63,14 @@ const BANK_ACCOUNTS: BankAccount[] = [
 ]
 
 export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymentMethodStepProps) {
-  const { selectedPackage } = useSubscriptionStore()
+  const { selectedPackage, setSubscriptionId, subscriptionId } = useSubscriptionStore()
   const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null)
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [transferNote, setTransferNote] = useState('')
   const [transferAmount, setTransferAmount] = useState('')
   const [transferDate, setTransferDate] = useState('')
   const [copiedAccount, setCopiedAccount] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Calculate pricing
@@ -119,7 +120,7 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
     }
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Validate form
     if (!selectedBank) {
       alert('Silakan pilih bank tujuan transfer')
@@ -141,25 +142,43 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
       return
     }
 
-    // Save payment data to store
-    const paymentData = {
-      method: 'BANK_TRANSFER',
-      bankId: selectedBank.id,
-      bankName: selectedBank.bankName,
-      accountNumber: selectedBank.accountNumber,
-      proofFile: proofFile,
-      transferAmount: parseInt(transferAmount.replace(/\D/g, '')),
-      transferDate: transferDate,
-      transferNote: transferNote,
-      total: total,
-      subtotal: subtotal,
-      tax: tax
+    if (!subscriptionId) {
+      alert('ID subscription tidak ditemukan. Silakan mulai dari awal.')
+      return
     }
 
-    // TODO: Save to store
-    console.log('Payment data:', paymentData)
-    
-    onNext()
+    setIsUploading(true)
+
+    try {
+      // Prepare form data
+      const formData = new FormData()
+      formData.append('paymentProof', proofFile)
+      formData.append('bankAccount', `${selectedBank.bankName} - ${selectedBank.accountNumber}`)
+      formData.append('transferAmount', transferAmount.replace(/\D/g, ''))
+      formData.append('transferDate', transferDate)
+      formData.append('transferNote', transferNote)
+
+      // Upload payment proof
+      const response = await fetch(`/api/subscription/${subscriptionId}/payment-proof`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to upload payment proof')
+      }
+
+      console.log('Payment proof uploaded successfully:', result)
+      onNext()
+      
+    } catch (error) {
+      console.error('Error uploading payment proof:', error)
+      alert(`Gagal upload bukti transfer: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const formatInputCurrency = (value: string) => {
@@ -420,10 +439,20 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
           
           <Button
             onClick={handleNext}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            disabled={isUploading}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
-            Upload & Lanjutkan
-            <ArrowRight className="h-4 w-4" />
+            {isUploading ? (
+              <>
+                <Loader className="h-4 w-4 animate-spin" />
+                Mengupload...
+              </>
+            ) : (
+              <>
+                Upload & Lanjutkan
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
         </div>
       </motion.div>

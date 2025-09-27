@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Building2, User, MapPin, Package, Check, ArrowRight, ArrowLeft,
   Mail, Phone, Target, Clock, Users, Calendar, Settings,
-  CheckCircle, AlertCircle, Info, Shield, FileText, CreditCard
+  CheckCircle, AlertCircle, Info, Shield, FileText, CreditCard, Loader2
 } from 'lucide-react'
 
 import { useSubscriptionStore } from '../store/subscription.store'
@@ -28,18 +28,86 @@ interface ConfirmationStepProps {
 }
 
 export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
-  const { selectedPackage, registrationData, isLoading } = useSubscriptionStore()
+  const { selectedPackage, registrationData, isLoading, setLoading, setError, setSubscriptionId } = useSubscriptionStore()
   const [agreements, setAgreements] = useState({
     termsOfService: false,
     privacyPolicy: false,
     dataProcessing: false,
     governmentCompliance: false
   })
+  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false)
 
-  const handleConfirm = () => {
-    if (allAgreementsChecked()) {
-      console.log('[Confirmation] All agreements confirmed, proceeding to payment...')
+  const handleConfirm = async () => {
+    if (!allAgreementsChecked()) {
+      return
+    }
+
+    if (!selectedPackage || !registrationData) {
+      setError('Data paket atau registrasi tidak lengkap')
+      return
+    }
+
+    setIsCreatingSubscription(true)
+    setLoading(true)
+
+    try {
+      console.log('[Confirmation] Creating subscription...')
+      
+      // Prepare subscription data
+      const subscriptionData = {
+        packageId: selectedPackage.id,
+        sppgData: {
+          sppgName: registrationData.name || '',
+          sppgType: registrationData.organizationType || '',
+          address: registrationData.address || '',
+          city: registrationData.city || '',
+          province: registrationData.provinceId || '',
+          phone: registrationData.phone || '',
+          email: registrationData.email || '',
+          picName: registrationData.picName || '',
+          picPosition: registrationData.picPosition || '',
+          picEmail: registrationData.picEmail || registrationData.email || '',
+          picPhone: registrationData.picPhone || registrationData.phone || '',
+          picWhatsapp: registrationData.picWhatsapp,
+          organizationType: registrationData.organizationType,
+          establishedYear: registrationData.establishedYear,
+          estimatedRecipients: registrationData.targetRecipients || 0,
+        },
+        paymentData: {
+          paymentMethod: 'BANK_TRANSFER',
+          billingCycle: 'MONTHLY', // Default to monthly
+        }
+      }
+
+      // Create subscription via API
+      const response = await fetch('/api/billing/subscription/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscriptionData),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to create subscription')
+      }
+
+      console.log('[Confirmation] Subscription created successfully:', result)
+      
+      // Save subscription ID to store
+      setSubscriptionId(result.subscriptionId)
+      
+      // Proceed to payment step
       onNext()
+      
+    } catch (error) {
+      console.error('[Confirmation] Error creating subscription:', error)
+      setError(`Gagal membuat subscription: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsCreatingSubscription(false)
+      setLoading(false)
     }
   }
 
@@ -482,11 +550,10 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
           className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 min-w-[180px] sm:min-w-[200px]"
         >
           {isLoading ? (
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
-            />
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Membuat Subscription...</span>
+            </>
           ) : (
             <>
               <Check className="h-4 w-4" />

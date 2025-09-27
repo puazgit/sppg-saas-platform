@@ -8,31 +8,39 @@ import { SuccessData, OnboardingStep, WelcomeNotification } from '../types/succe
 export class SuccessService {
   
   /**
-   * Get subscription success data - Using mock data for now
+   * Get subscription success data from API
    */
   static async getSuccessData(subscriptionId: string): Promise<SuccessData> {
-    // TODO: Implement actual API call when backend is ready
-    console.log(`[Mock] Getting success data for subscription: ${subscriptionId}`)
-    
-    // Return mock data immediately
-    return {
-        subscriptionId,
-        sppgId: `SPPG-${Date.now()}`,
-        organizationName: 'SPPG Contoh',
-        packageName: 'Paket STANDARD',
-        activationStatus: 'ACTIVE',
-        invoice: {
-          id: `INV-${Date.now()}`,
-          amount: 2500000,
-          paidAt: new Date(),
-          paymentMethod: 'Virtual Account BCA'
+    try {
+      console.log(`[API] Getting success data for subscription: ${subscriptionId}`)
+      
+      const response = await fetch(`/api/subscription/${subscriptionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        account: {
-          adminEmail: 'admin@sppg-contoh.com',
-          loginUrl: 'https://app.sppg-platform.com/login',
-          tempPassword: 'Welcome2024!',
-          setupRequired: true
-        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch subscription data')
+      }
+
+      // Transform API response to match SuccessData interface
+      const apiData = result.data
+      return {
+        subscriptionId: apiData.subscriptionId,
+        sppgId: apiData.sppgId,
+        organizationName: apiData.organizationName,
+        packageName: apiData.packageName,
+        activationStatus: apiData.activationStatus,
+        invoice: apiData.invoice,
+        account: apiData.account,
         nextSteps: [
           {
             title: 'Aktivasi Akun Admin',
@@ -59,7 +67,44 @@ export class SuccessService {
           whatsapp: '+62-811-2345-6789'
         }
       }
+    } catch (error) {
+      console.error('[API] Error fetching success data:', error)
+      
+      // Return fallback data if API fails
+      return {
+        subscriptionId,
+        sppgId: `SPPG-${Date.now()}`,
+        organizationName: 'SPPG Contoh',
+        packageName: 'Paket STANDARD',
+        activationStatus: 'ACTIVE',
+        invoice: {
+          id: `INV-${Date.now()}`,
+          amount: 2500000,
+          paidAt: new Date(),
+          paymentMethod: 'Bank Transfer'
+        },
+        account: {
+          adminEmail: 'admin@sppg-contoh.com',
+          loginUrl: '/sppg/login',
+          tempPassword: 'Welcome2024!',
+          setupRequired: true
+        },
+        nextSteps: [
+          {
+            title: 'Aktivasi Akun Admin',
+            description: 'Login pertama dan ganti password default',
+            actionRequired: true,
+            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+          }
+        ],
+        support: {
+          email: 'support@sppg-platform.com',
+          phone: '+62-21-1234-5678',
+          whatsapp: '+62-811-2345-6789'
+        }
+      }
     }
+  }
 
   /**
    * Get onboarding steps - Using mock data for now

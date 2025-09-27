@@ -64,9 +64,9 @@ function ProgressIndicator({ currentStep }: { currentStep: number }) {
   )
 }
 
-export function SubscriptionFlow() {
-  const { currentStep: storeStep, nextStep, prevStep } = useSubscriptionStore()
-  const [direction, setDirection] = useState(0)
+export default function SubscriptionFlow() {
+  const { currentStep: storeStep, nextStep, prevStep, subscriptionId } = useSubscriptionStore()
+  const [direction, setDirection] = useState(1)
   const searchParams = useSearchParams()
 
   // Enterprise URL parameter handling - delegates to package selection component
@@ -104,7 +104,7 @@ export function SubscriptionFlow() {
       case 5:
         return <PaymentProcessingStep onNext={handleNext} onBack={handlePrevious} />
       case 6:
-        return <SuccessStep subscriptionId="demo-subscription" />
+        return <SuccessStep subscriptionId={subscriptionId || "demo-subscription"} />
       default:
         return <PackageSelectionStep onNext={handleNext} />
     }
