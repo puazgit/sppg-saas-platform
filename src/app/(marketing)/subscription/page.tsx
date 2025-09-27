@@ -4,7 +4,7 @@
  */
 
 import { Suspense } from 'react'
-import { SubscriptionFlow } from '@/features/subscription/components/subscription-flow'
+import SubscriptionFlow from '@/features/subscription/components/subscription-flow'
 
 export default function SubscriptionPage() {
   return (
