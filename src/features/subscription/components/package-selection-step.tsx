@@ -14,7 +14,7 @@ import { Check, Star, Crown, Zap, Shield, ArrowRight } from 'lucide-react'
 import { useSubscriptionStore } from '@/features/subscription/store/subscription.store'
 import { useSubscriptionPackages } from '@/features/subscription/hooks/use-subscription'
 import { motion } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import type { SubscriptionPackage } from '@/features/subscription/services/subscription-api'
 
 interface PackageSelectionStepProps {
@@ -51,6 +51,7 @@ const getSelectedTierColor = (tier: string) => {
 export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
   const { selectedPackage, setPackage } = useSubscriptionStore()
   const searchParams = useSearchParams()
+  const router = useRouter()
   
   // Professional billing cycle state - matching marketing section exactly
   const [isYearly, setIsYearly] = useState(false)
@@ -122,6 +123,26 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
     }
   }, [searchParams, packages, selectedPackage?.id, isYearly, setPackage])
 
+  // Update URL when package or billing cycle changes
+  const updateURL = (packageTier: string, billing: 'monthly' | 'yearly') => {
+    const newSearchParams = new URLSearchParams(searchParams.toString())
+    newSearchParams.set('package', packageTier.toLowerCase())
+    newSearchParams.set('billing', billing)
+    
+    const newUrl = `/subscription?${newSearchParams.toString()}`
+    router.replace(newUrl, { scroll: false })
+  }
+
+  // Handle billing cycle change
+  const handleBillingCycleChange = (yearly: boolean) => {
+    setIsYearly(yearly)
+    
+    // Update URL if package is selected
+    if (selectedPackage) {
+      updateURL(selectedPackage.tier, yearly ? 'yearly' : 'monthly')
+    }
+  }
+
   // Enterprise package selection with immediate response
   const handleSelectPackage = (pkg: SubscriptionPackage) => {
     console.log('[Enterprise] Package selection initiated:', {
@@ -142,6 +163,10 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
     // Update store immediately (no delays for enterprise UX)
     console.log('[Enterprise] Updating package in store...')
     setPackage(pkg)
+    
+    // Update URL to reflect new selection
+    updateURL(pkg.tier, isYearly ? 'yearly' : 'monthly')
+    
     console.log('[Enterprise] Package updated in store, selectedPackage should now be:', pkg.displayName || pkg.name)
   }
 
@@ -211,7 +236,7 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
           </span>
           <Switch
             checked={isYearly}
-            onCheckedChange={setIsYearly}
+            onCheckedChange={handleBillingCycleChange}
             className="data-[state=checked]:bg-indigo-600"
           />
           <span className={`text-sm font-medium ${
@@ -227,13 +252,16 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
         </div>
         
         {selectedPackage && (
-          <div className="mb-6">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-300 rounded-lg mb-4 shadow-sm">
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-50 to-blue-50 border border-green-300 rounded-lg mb-2 shadow-sm">
               <Check className="h-5 w-5 text-green-600 mr-2" />
               <span className="text-green-800 font-medium">
                 {selectedPackage.displayName || selectedPackage.name} • {isYearly ? 'Tahunan' : 'Bulanan'}
               </span>
             </div>
+            <p className="text-sm text-gray-600">
+              💡 Klik paket lain untuk mengganti pilihan atau ubah siklus pembayaran di atas
+            </p>
           </div>
         )}
       </div>
