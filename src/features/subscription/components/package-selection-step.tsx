@@ -328,18 +328,10 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
                   {pkg.description || 'Paket berlangganan SPPG'}
                 </p>
                 
-                <div className="space-y-3 mb-6">
+                <div className="space-y-2 mb-6">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Max Penerima:</span>
-                    <span className="font-medium">{(pkg.maxRecipients || 0).toLocaleString()} orang</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Max Staff:</span>
-                    <span className="font-medium">{pkg.maxStaff || 0} orang</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Storage:</span>
-                    <span className="font-medium">{pkg.storageGb || 0} GB</span>
+                    <span className="text-gray-600">Target:</span>
+                    <span className="font-medium">{pkg.targetMarket || 'All SPPG'}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Support:</span>
@@ -348,12 +340,17 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
                 </div>
                 
                 <div className="space-y-2 mb-6">
-                  {(pkg.highlightFeatures || []).slice(0, 3).map((feature, index) => (
+                  {(pkg.highlightFeatures || []).slice(0, 2).map((feature, index) => (
                     <div key={index} className="flex items-center text-sm">
                       <Check className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
                       <span className="text-gray-700">{feature}</span>
                     </div>
                   ))}
+                  {(pkg.highlightFeatures || []).length > 2 && (
+                    <div className="text-xs text-blue-600 font-medium">
+                      +{(pkg.highlightFeatures || []).length - 2} fitur lainnya
+                    </div>
+                  )}
                 </div>
                 
                 <Button
@@ -388,36 +385,20 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm"
+          className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6 shadow-sm"
         >
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Paket yang Dipilih: {selectedPackage.displayName || selectedPackage.name}
-              </h3>
-              <div className="flex items-center space-x-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">
-                    {formatCurrency(
-                      isYearly
-                        ? ((selectedPackage.yearlyPrice || selectedPackage.monthlyPrice * 10) || 0)
-                        : (selectedPackage.monthlyPrice || 0)
-                    )}
-                  </div>
-                  <div className="text-gray-500">
-                    {isYearly ? 'per tahun' : 'per bulan'}
-                  </div>
-                  {isYearly && (
-                    <div className="text-sm text-green-600 font-medium mt-1">
-                      💰 Hemat {formatCurrency((selectedPackage.monthlyPrice || 0) * 12 - ((selectedPackage.yearlyPrice || selectedPackage.monthlyPrice * 10) || 0))} per tahun
-                    </div>
-                  )}
-                  {!isYearly && (
-                    <div className="text-sm text-blue-600 font-medium mt-1">
-                      💡 Pilih tahunan dan hemat 20%
-                    </div>
-                  )}
-                </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-green-100 p-3 rounded-full">
+                <Check className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedPackage.displayName || selectedPackage.name}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {isYearly ? 'Pembayaran Tahunan' : 'Pembayaran Bulanan'} • {selectedPackage.targetMarket || 'All SPPG'}
+                </p>
               </div>
             </div>
             <Button

@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -151,48 +150,44 @@ function PackageUsageOverview({ selectedPackage }: PackageUsageOverviewProps) {
   const maxStaff = selectedPackage?.maxStaff || 0
   const maxDistributionPoints = selectedPackage?.maxDistributionPoints || 0
   
+
+  
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Users className="h-4 w-4 text-blue-600" />
-          Max Penerima
+    <div className="bg-gray-50 rounded-lg p-4">
+      <h4 className="text-sm font-medium text-gray-900 mb-3">Kapasitas Paket</h4>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-sm text-gray-600 mb-1">
+            <Users className="h-4 w-4" />
+            Penerima
+          </div>
+          <div className="text-lg font-bold text-gray-900">
+            {maxRecipients.toLocaleString()}
+          </div>
+          <div className="text-xs text-gray-500">per hari</div>
         </div>
-        <div className="text-2xl font-bold">
-          {maxRecipients.toLocaleString()}
-        </div>
-        <Progress value={75} className="h-2" />
-        <p className="text-xs text-muted-foreground">
-          Dapat melayani hingga {maxRecipients.toLocaleString()} penerima per hari
-        </p>
-      </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <MapPin className="h-4 w-4 text-green-600" />
-          Max Staff
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-sm text-gray-600 mb-1">
+            <MapPin className="h-4 w-4" />
+            Staff
+          </div>
+          <div className="text-lg font-bold text-gray-900">
+            {maxStaff}
+          </div>
+          <div className="text-xs text-gray-500">users</div>
         </div>
-        <div className="text-2xl font-bold">
-          {maxStaff}
-        </div>
-        <Progress value={60} className="h-2" />
-        <p className="text-xs text-muted-foreground">
-          Dukungan untuk {maxStaff} staff member
-        </p>
-      </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Clock className="h-4 w-4 text-purple-600" />
-          Titik Distribusi
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-sm text-gray-600 mb-1">
+            <Clock className="h-4 w-4" />
+            Distribusi
+          </div>
+          <div className="text-lg font-bold text-gray-900">
+            {maxDistributionPoints}
+          </div>
+          <div className="text-xs text-gray-500">lokasi</div>
         </div>
-        <div className="text-2xl font-bold">
-          {maxDistributionPoints}
-        </div>
-        <Progress value={40} className="h-2" />
-        <p className="text-xs text-muted-foreground">
-          Hingga {maxDistributionPoints} lokasi distribusi
-        </p>
       </div>
     </div>
   )
