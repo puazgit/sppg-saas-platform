@@ -11,7 +11,7 @@ import { useSubscriptionStore } from '../store/subscription.store'
 import { PackageSelectionStep } from './package-selection-step'
 import { RegistrationFormStep } from './registration-form-step'
 import { ConfirmationStep } from './confirmation-step'
-import PaymentMethodStep from './payment-method-step'
+import SimplePaymentMethodStep from './simple-payment-method-step'
 import PaymentProcessingStep from './payment-processing-step'
 import SuccessStep from './success-step'
 
@@ -21,8 +21,8 @@ function ProgressIndicator({ currentStep }: { currentStep: number }) {
     { number: 1, name: 'Paket', description: 'Pilih Paket' },
     { number: 2, name: 'Data', description: 'Informasi SPPG' },
     { number: 3, name: 'Konfirmasi', description: 'Review Data' },
-    { number: 4, name: 'Pembayaran', description: 'Metode Bayar' },
-    { number: 5, name: 'Proses', description: 'Processing' },
+    { number: 4, name: 'Pembayaran', description: 'Upload Bukti' },
+    { number: 5, name: 'Verifikasi', description: 'Validasi' },
     { number: 6, name: 'Selesai', description: 'Berhasil' }
   ]
 
@@ -100,7 +100,7 @@ export function SubscriptionFlow() {
       case 3:
         return <ConfirmationStep onNext={handleNext} onBack={handlePrevious} />
       case 4:
-        return <PaymentMethodStep onNext={handleNext} onBack={handlePrevious} />
+        return <SimplePaymentMethodStep onNext={handleNext} onBack={handlePrevious} />
       case 5:
         return <PaymentProcessingStep onNext={handleNext} onBack={handlePrevious} />
       case 6:
