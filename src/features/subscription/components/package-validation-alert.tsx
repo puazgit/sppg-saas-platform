@@ -72,7 +72,7 @@ export function PackageValidationAlert({
             </Badge>
           </div>
           <CardDescription>
-            Paket {selectedPackage.name} - {selectedPackage.description}
+            Paket {selectedPackage?.name || 'Unknown'} - {selectedPackage?.description || 'No description'}
           </CardDescription>
         </CardHeader>
 
@@ -142,10 +142,15 @@ export function PackageValidationAlert({
 }
 
 interface PackageUsageOverviewProps {
-  selectedPackage: SubscriptionPackage
+  selectedPackage: SubscriptionPackage | null
 }
 
 function PackageUsageOverview({ selectedPackage }: PackageUsageOverviewProps) {
+  // Safe access with fallback values
+  const maxRecipients = selectedPackage?.maxRecipients || 0
+  const maxStaff = selectedPackage?.maxStaff || 0
+  const maxDistributionPoints = selectedPackage?.maxDistributionPoints || 0
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="space-y-2">
@@ -154,11 +159,11 @@ function PackageUsageOverview({ selectedPackage }: PackageUsageOverviewProps) {
           Max Penerima
         </div>
         <div className="text-2xl font-bold">
-          {selectedPackage.maxRecipients.toLocaleString()}
+          {maxRecipients.toLocaleString()}
         </div>
         <Progress value={75} className="h-2" />
         <p className="text-xs text-muted-foreground">
-          Dapat melayani hingga {selectedPackage.maxRecipients.toLocaleString()} penerima per hari
+          Dapat melayani hingga {maxRecipients.toLocaleString()} penerima per hari
         </p>
       </div>
 
@@ -168,11 +173,11 @@ function PackageUsageOverview({ selectedPackage }: PackageUsageOverviewProps) {
           Max Staff
         </div>
         <div className="text-2xl font-bold">
-          {selectedPackage.maxStaff}
+          {maxStaff}
         </div>
         <Progress value={60} className="h-2" />
         <p className="text-xs text-muted-foreground">
-          Dukungan untuk {selectedPackage.maxStaff} staff member
+          Dukungan untuk {maxStaff} staff member
         </p>
       </div>
 
@@ -182,11 +187,11 @@ function PackageUsageOverview({ selectedPackage }: PackageUsageOverviewProps) {
           Titik Distribusi
         </div>
         <div className="text-2xl font-bold">
-          {selectedPackage.maxDistributionPoints}
+          {maxDistributionPoints}
         </div>
         <Progress value={40} className="h-2" />
         <p className="text-xs text-muted-foreground">
-          Hingga {selectedPackage.maxDistributionPoints} lokasi distribusi
+          Hingga {maxDistributionPoints} lokasi distribusi
         </p>
       </div>
     </div>
