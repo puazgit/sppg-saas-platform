@@ -339,8 +339,8 @@ export const PricingSection = () => {
                     <div className="space-y-2">
                       <div className="flex items-baseline justify-center space-x-1">
                         <span className={`text-4xl font-bold ${pkg.isEnterprise ? 'text-white' : 'text-gray-900'}`}>
-                          {pkg.monthlyPrice === 0 ? 'Gratis' : 
-                           pkg.tier === 'ENTERPRISE' ? 'Custom' :
+                          {pkg.tier === 'ENTERPRISE' ? 'Custom' :
+                           pkg.monthlyPrice === 0 ? 'Gratis' :
                            `Rp ${pricing.price.toLocaleString('id-ID')}`}
                         </span>
                         {pkg.monthlyPrice > 0 && pkg.tier !== 'ENTERPRISE' && (
@@ -364,10 +364,18 @@ export const PricingSection = () => {
                     </div>
                   </div>
 
-                  {/* Key Features */}
+                  {/* Key Benefits - Non-redundant */}
                   <div className="space-y-4 mb-8">
                     <div className="space-y-3">
-                      {(pkg.highlightFeatures || pkg.features || []).slice(0, 4).map((feature, idx) => (
+                      {/* Filter out redundant capacity info and show only unique features */}
+                      {(pkg.highlightFeatures || pkg.features || [])
+                        .filter(feature => 
+                          !feature.toLowerCase().includes('maksimal') && 
+                          !feature.toLowerCase().includes('terbatas') &&
+                          feature.toLowerCase() !== 'basic reporting' &&
+                          feature.toLowerCase() !== 'advanced reporting'
+                        )
+                        .slice(0, 3).map((feature, idx) => (
                         <div key={idx} className="flex items-start space-x-3">
                           <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
                             pkg.isEnterprise ? 'text-green-400' : 'text-green-500'
@@ -377,34 +385,19 @@ export const PricingSection = () => {
                           </span>
                         </div>
                       ))}
-                      {(pkg.highlightFeatures || pkg.features || []).length > 4 && (
-                        <div className={`text-xs font-medium ${
-                          pkg.isEnterprise ? 'text-indigo-300' : 'text-blue-600'
-                        }`}>
-                          +{(pkg.highlightFeatures || pkg.features || []).length - 4} fitur lainnya
+                      
+                      {/* Show capacity in a single clean line */}
+                      <div className={`text-sm ${pkg.isEnterprise ? 'text-indigo-100' : 'text-gray-700'} bg-gray-50 ${pkg.isEnterprise ? 'bg-indigo-800/30' : ''} rounded-lg p-3 mt-4`}>
+                        <div className="flex items-center space-x-2">
+                          <Check className={`w-4 h-4 flex-shrink-0 ${
+                            pkg.isEnterprise ? 'text-green-400' : 'text-green-500'
+                          }`} />
+                          <span>
+                            {(pkg.maxUsers || 0) > 100000 ? 'Unlimited' : `${(pkg.maxUsers || 0).toLocaleString()} users`} • 
+                            {(pkg.maxSchools || 0) > 100 ? 'Unlimited' : `${pkg.maxSchools || 0} lokasi`} • 
+                            {pkg.supportLevel} support
+                          </span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Core Limits - Simplified */}
-                    <div className={`pt-4 border-t ${pkg.isEnterprise ? 'border-indigo-700' : 'border-gray-200'} space-y-2 text-xs ${
-                      pkg.isEnterprise ? 'text-indigo-300' : 'text-gray-500'
-                    }`}>
-                      <div className="flex justify-between">
-                        <span>Penerima:</span>
-                        <span className="font-medium">
-                          {(pkg.maxRecipients ?? 0) === -1 || (pkg.maxRecipients ?? 0) > 100000 ? 'Unlimited' : (pkg.maxRecipients ?? 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Staff:</span>
-                        <span className="font-medium">
-                          {(pkg.maxStaff ?? 0) === -1 || (pkg.maxStaff ?? 0) > 1000 ? 'Unlimited' : (pkg.maxStaff ?? 0)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Support:</span>
-                        <span className="font-medium">{pkg.supportLevel}</span>
                       </div>
                     </div>
                   </div>

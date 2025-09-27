@@ -21,23 +21,26 @@ export async function GET() {
       monthlyPrice: pkg.monthlyPrice,
       yearlyPrice: pkg.yearlyPrice,
       description: pkg.description,
+      // Clean features list - only unique capabilities, no redundant capacity info
       features: [
-        ...(pkg.maxRecipients > 0 ? [`Maksimal ${pkg.maxRecipients.toLocaleString()} penerima`] : ['Unlimited penerima']),
-        ...(pkg.maxStaff > 0 ? [`Maksimal ${pkg.maxStaff} staff`] : ['Unlimited staff']),
-        ...(pkg.maxDistributionPoints > 0 ? [`${pkg.maxDistributionPoints} titik distribusi`] : ['Unlimited titik distribusi']),
-        ...(pkg.hasAdvancedReporting ? ['Advanced reporting'] : ['Basic reporting']),
-        ...(pkg.hasNutritionAnalysis ? ['Analisis nutrisi'] : []),
-        ...(pkg.hasCostCalculation ? ['Kalkulasi biaya'] : []),
-        ...(pkg.hasQualityControl ? ['Quality control'] : []),
-        ...(pkg.hasAPIAccess ? ['API access'] : []),
-        ...(pkg.hasCustomBranding ? ['Custom branding'] : [])
-      ],
+        ...(pkg.hasNutritionAnalysis ? ['Analisis nutrisi otomatis'] : []),
+        ...(pkg.hasCostCalculation ? ['Kalkulasi biaya real-time'] : []),
+        ...(pkg.hasQualityControl ? ['Quality control system'] : []),
+        ...(pkg.hasAPIAccess ? ['API integration'] : []),
+        ...(pkg.hasCustomBranding ? ['Custom branding'] : []),
+        ...(pkg.hasPrioritySupport ? ['Priority support'] : []),
+        ...(pkg.hasTrainingIncluded ? ['Training included'] : []),
+        ...(pkg.hasAdvancedReporting ? ['Advanced analytics & reporting'] : ['Laporan standar'])
+      ].filter(Boolean),
+      // Simplified - remove redundant limitations
       limitations: [
-        ...(pkg.maxRecipients > 0 ? [`Terbatas ${pkg.maxRecipients.toLocaleString()} penerima`] : []),
-        ...(pkg.storageGb > 0 ? [`${pkg.storageGb}GB storage`] : []),
-        ...(pkg.maxReportsPerMonth > 0 ? [`${pkg.maxReportsPerMonth} laporan/bulan`] : [])
+        ...(pkg.storageGb > 0 && pkg.storageGb < 500 ? [`${pkg.storageGb}GB storage`] : []),
+        ...(pkg.maxReportsPerMonth > 0 && pkg.maxReportsPerMonth < 1000 ? [`${pkg.maxReportsPerMonth} laporan/bulan`] : [])
       ],
-      maxSppg: 1,
+      // Clean capacity data without redundancy
+      maxRecipients: pkg.maxRecipients,
+      maxStaff: pkg.maxStaff,
+      maxDistributionPoints: pkg.maxDistributionPoints,
       maxUsers: pkg.maxStaff || -1,
       maxSchools: pkg.maxDistributionPoints || -1,
       supportLevel: pkg.supportLevel,
