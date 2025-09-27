@@ -5,14 +5,14 @@
 
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Check, Star, Crown, Zap, Shield, ArrowRight } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
 import { useSubscriptionStore } from '@/features/subscription/store/subscription.store'
+import { useSubscriptionPackages } from '@/features/subscription/hooks/use-subscription'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 import type { SubscriptionPackage } from '@/features/subscription/services/subscription-api'
@@ -72,17 +72,8 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
     }).format(amount)
   }
 
-  // Fetch packages
-  const { data: packagesData, isLoading, error } = useQuery<{ success: boolean; data: SubscriptionPackage[] }>({
-    queryKey: ['subscription-packages'],
-    queryFn: async () => {
-      const response = await fetch('/api/billing/packages')
-      if (!response.ok) throw new Error('Failed to fetch packages')
-      return response.json()
-    }
-  })
-
-  const packages = useMemo(() => packagesData?.data || [], [packagesData])
+  // Fetch packages using enterprise hook
+  const { data: packages = [], isLoading, error } = useSubscriptionPackages()
 
   // Enterprise URL parameter handling with billing cycle sync  
   useEffect(() => {
