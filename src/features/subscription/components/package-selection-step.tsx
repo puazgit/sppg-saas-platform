@@ -73,7 +73,7 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
   }
 
   // Fetch packages
-  const { data: packagesData, isLoading, error } = useQuery<{ packages: SubscriptionPackage[] }>({
+  const { data: packagesData, isLoading, error } = useQuery<{ success: boolean; data: SubscriptionPackage[] }>({
     queryKey: ['subscription-packages'],
     queryFn: async () => {
       const response = await fetch('/api/billing/packages')
@@ -82,7 +82,7 @@ export function PackageSelectionStep({ onNext }: PackageSelectionStepProps) {
     }
   })
 
-  const packages = useMemo(() => packagesData?.packages || [], [packagesData])
+  const packages = useMemo(() => packagesData?.data || [], [packagesData])
 
   // Enterprise URL parameter handling with billing cycle sync  
   useEffect(() => {
