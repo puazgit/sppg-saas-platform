@@ -42,6 +42,7 @@ import { usePackageValidation } from '../lib/package-validation'
 import PackageValidationAlert, { FieldValidationFeedback } from './package-validation-alert'
 import { useEnhancedRegistrationValidation } from '../lib/enhanced-registration-validation'
 import EnhancedValidationAlert from './enhanced-validation-alert'
+import PaymentSummary from './payment-summary'
 
 // ================================================================================
 // ENTERPRISE TYPE DEFINITIONS
