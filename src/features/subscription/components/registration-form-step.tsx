@@ -40,6 +40,8 @@ import { useSubscriptionStore } from '../store/subscription.store'
 import { registrationDataSchema, type RegistrationData } from '../schemas/subscription.schema'
 import { usePackageValidation } from '../lib/package-validation'
 import PackageValidationAlert, { FieldValidationFeedback } from './package-validation-alert'
+import { useEnhancedRegistrationValidation } from '../lib/enhanced-registration-validation'
+import EnhancedValidationAlert from './enhanced-validation-alert'
 
 // ================================================================================
 // ENTERPRISE TYPE DEFINITIONS
@@ -188,6 +190,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
   // Package validation integration (after form is created)
   const watchedData = watch()
   const packageValidation = usePackageValidation(watchedData, selectedPackage)
+  const enhancedValidation = useEnhancedRegistrationValidation(watchedData, selectedPackage)
 
   // ================================
   // ENTERPRISE VALIDATION ENGINE
@@ -1366,12 +1369,22 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
           <div className="space-y-8">
             {renderStepHeader()}
             
-            {/* Package Validation Alert */}
+            {/* Enhanced Validation Alert */}
+            <EnhancedValidationAlert
+              validationResult={enhancedValidation.validation}
+              validationSummary={enhancedValidation.summary}
+              selectedPackage={selectedPackage}
+              organizationType={watchedData.organizationType || 'LAINNYA'}
+              onUpgrade={upgradePackage}
+              className="mb-6"
+            />
+            
+            {/* Basic Package Validation Alert (for package limits) */}
             <PackageValidationAlert
               validationResult={packageValidation.validation}
               selectedPackage={selectedPackage}
               onUpgrade={upgradePackage}
-              className="mb-6"
+              className="mb-4"
             />
             
             <AnimatePresence mode="wait">
