@@ -15,9 +15,23 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SPPG SaaS Platform",
-  description: "Sistem Manajemen SPPG Berbasis Langganan",
+  description: "Platform SaaS untuk manajemen SPPG (Satuan Pelayanan Gizi Gratis)",
 };
 
+/**
+ * Root Layout - Global Application Wrapper
+ * 
+ * Layout ini hanya menyediakan:
+ * - HTML struktur dasar
+ * - Font loading (Geist Sans & Mono)
+ * - Global providers (Themes, TanStack Query, etc.)
+ * - Global CSS
+ * 
+ * Tidak termasuk navigation/footer karena setiap route group memiliki layout sendiri:
+ * - Root (/) → Marketing layout dengan NavigationHeader + Footer
+ * - /sppg → SPPG dashboard layout dengan sidebar
+ * - /superadmin → SuperAdmin layout dengan admin navigation
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

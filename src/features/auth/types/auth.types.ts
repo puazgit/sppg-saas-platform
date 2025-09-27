@@ -34,7 +34,9 @@ export interface SessionUser extends AuthUser {
 }
 
 declare module "next-auth" {
-  interface User extends AuthUser {}
+  interface User extends AuthUser {
+    id: string
+  }
   
   interface Session {
     user: SessionUser
@@ -42,5 +44,7 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
-  interface JWT extends AuthUser {}
+  interface JWT extends AuthUser {
+    sub: string
+  }
 }

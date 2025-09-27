@@ -65,8 +65,9 @@ export async function isUserSuperAdmin(userId: string): Promise<boolean> {
 /**
  * Validate user credentials for login
  */
-export async function validateCredentials(_email: string, _password: string) {
+export async function validateCredentials(email: string, password: string) {
   // This will be implemented when we create the API endpoints
   // For now, return a placeholder
+  console.log('Validating credentials for:', email, password ? '[HIDDEN]' : '[NO_PASSWORD]')
   return null
 }

@@ -38,6 +38,14 @@ enum SubscriptionTier {
   ENTERPRISE
 }
 
+enum OrganizationType {
+  PEMERINTAH         // Government
+  SWASTA             // Private
+  YAYASAN            // Foundation
+  KOMUNITAS          // Community
+  LAINNYA            // Others
+}
+
 enum PaymentStatus {
   PENDING            // Menunggu
   PROCESSING         // Diproses
@@ -241,6 +249,22 @@ enum MenuCategory {
   DESSERT            // Makanan Penutup
 }
 
+enum LeadStatus {
+  NEW                // Baru
+  CONTACTED          // Sudah Dihubungi
+  QUALIFIED          // Qualified
+  CONVERTED          // Terdaftar
+  LOST               // Tidak Tertarik
+}
+
+enum DemoStatus {
+  PENDING            // Menunggu
+  SCHEDULED          // Dijadwalkan
+  COMPLETED          // Selesai
+  CANCELLED          // Dibatalkan
+  NO_SHOW            // Tidak Hadir
+}
+
 // ================================ CORE MODELS ================================
 
 model User {
@@ -294,6 +318,121 @@ model User {
   @@index([sppgId])
   @@index([userType])
   @@map("users")
+}
+
+// ================================ MARKETING MODELS ================================
+
+model MarketingLead {
+  id            String          @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  organization  String?
+  interest      SubscriptionTier @default(STANDARD)
+  source        String          // 'CONTACT_FORM', 'DEMO_REQUEST', 'WEBSITE', etc.
+  status        LeadStatus      @default(NEW)
+  metadata      Json?           // Store additional form data
+  
+  // Relations
+  demoRequests  DemoRequest[]
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([email])
+  @@index([status])
+  @@index([source])
+  @@map("marketing_leads")
+}
+
+model DemoRequest {
+  id              String      @id @default(cuid())
+  leadId          String
+  requestDate     DateTime    @default(now())
+  preferredDate   DateTime?
+  status          DemoStatus  @default(PENDING)
+  requirements    String?
+  estimatedUsers  Int?
+  estimatedSchools Int?
+  scheduledAt     DateTime?
+  completedAt     DateTime?
+  notes           String?
+  
+  // Relations
+  lead            MarketingLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([leadId])
+  @@index([status])
+  @@map("demo_requests")
+}
+
+model NewsletterSubscriber {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  source        String    @default("WEBSITE")
+  isActive      Boolean   @default(true)
+  subscribedAt  DateTime  @default(now())
+  unsubscribedAt DateTime?
+  reactivatedAt DateTime?
+  
+  @@index([email])
+  @@index([isActive])
+  @@map("newsletter_subscribers")
+}
+
+model CaseStudy {
+  id                  String      @id @default(cuid())
+  organizationName    String
+  location            String
+  organizationSize    String      // 'Small', 'Medium', 'Large', 'Enterprise'
+  industry            String      @default("Government")
+  
+  // Situation Analysis
+  beforeSituation     String      // What was the situation before implementation
+  afterSituation      String      // What improved after implementation
+  mainProblems        String[]    // Array of main problems faced
+  solutionsProvided   String[]    // Array of solutions implemented
+  
+  // Results & Metrics
+  resultsAchieved     Json        // Flexible object for various achievement metrics
+  metrics             Json        // Detailed before/after metrics
+  
+  // Testimonial
+  testimonial         String?     // Quote from the client
+  testimonialAuthor   String?     // Name of person giving testimonial
+  testimonialPosition String?     // Position of testimonial author
+  
+  // Project Details
+  duration            String      // e.g., "6 months", "3 months"
+  investment          String      // e.g., "Rp 54 juta"
+  roi                 String      // e.g., "340%"
+  
+  // Timeline
+  implementationDate  DateTime
+  completionDate      DateTime?
+  
+  // Status & Publishing
+  status              String      @default("DRAFT") // DRAFT, COMPLETED, ARCHIVED
+  isPublished         Boolean     @default(false)
+  isFeatured          Boolean     @default(false)
+  
+  // SEO & Marketing
+  tags                String[]    // Array of tags for categorization
+  imageUrl            String?     // Main case study image
+  videoUrl            String?     // Optional video testimonial
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  @@index([organizationSize])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([status])
+  @@map("case_studies")  
 }
 
 // ================================ RBAC MODELS ================================
@@ -383,6 +522,17 @@ model SPPG {
   address         String
   phone           String
   email           String
+  
+  // Person in Charge Information
+  picName         String // Person in Charge Name
+  picPosition     String // PIC Position/Role
+  picEmail        String // PIC Email
+  picPhone        String // PIC Phone Number
+  picWhatsapp     String? // PIC WhatsApp (optional)
+  
+  // Organization Details
+  organizationType OrganizationType // Organization Type
+  establishedYear Int? // Year established
   
   targetRecipients    Int      // Target penerima
   maxRadius          Float    // dalam KM - radius maksimal
@@ -3174,4 +3324,125 @@ model TimezoneLog {
   @@index([sppgId, eventType])
   @@index([createdAt])
   @@map("timezone_logs")
+}
+
+// ================================ MARKETING SYSTEM ================================
+
+model SpecialOffer {
+  id                  String @id @default(cuid())
+  title               String
+  description         String
+  discountPercentage  Int
+  discountAmount      Decimal?
+  validFrom           DateTime @default(now())
+  validUntil          DateTime
+  active              Boolean @default(true)
+  termsConditions     String?
+  maxUsage            Int?
+  currentUsage        Int @default(0)
+  targetAudience      String[] // ['NEW_CUSTOMERS', 'EXISTING', 'ENTERPRISE']
+  applicablePackages  String[] // ['BASIC', 'STANDARD', 'PRO', 'ENTERPRISE']
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([active, validFrom, validUntil])
+  @@map("special_offers")
+}
+
+model MarketingFeature {
+  id                  String @id @default(cuid())
+  title               String
+  description         String
+  icon                String
+  category            String
+  benefits            String[]
+  availableIn         String[] // Package tiers where this feature is available
+  isHighlight         Boolean @default(false)
+  sortOrder           Int @default(0)
+  active              Boolean @default(true)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([active, isHighlight])
+  @@index([category, sortOrder])
+  @@map("marketing_features")
+}
+
+model MarketingTestimonial {
+  id                  String @id @default(cuid())
+  organizationName    String
+  contactName         String
+  position            String
+  location            String
+  organizationSize    String // 'SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE'
+  content             String
+  rating              Int @default(5)
+  photoUrl            String?
+  isPublished         Boolean @default(false)
+  isFeatured          Boolean @default(false)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([isPublished, isFeatured])
+  @@map("marketing_testimonials")
+}
+
+model MarketingHeroFeature {
+  id                  String @id @default(cuid())
+  title               String @unique
+  description         String
+  icon                String
+  category            String @default("GENERAL") // "SECURITY", "AUTOMATION", "ANALYTICS", "IMPLEMENTATION"
+  isActive            Boolean @default(true)
+  sortOrder           Int @default(0)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([isActive, sortOrder])
+  @@map("marketing_hero_features")
+}
+
+model MarketingTrustIndicator {
+  id                  String @id @default(cuid())
+  label               String @unique
+  description         String
+  icon                String
+  metricType          String // "COUNT", "PERCENTAGE", "RATING", "CURRENCY"
+  staticValue         String? // For static values like "99.95%"
+  querySource         String? // For dynamic values like "SPPG_COUNT", "PROVINCES_COUNT"
+  isActive            Boolean @default(true)
+  sortOrder           Int @default(0)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@index([isActive, sortOrder])
+  @@map("marketing_trust_indicators")
+}
+
+model MarketingCaseStudy {
+  id                  String @id @default(cuid())
+  title               String @unique
+  clientName          String
+  industry            String
+  challenge           String
+  solution            String
+  results             String[] // Array of result statements
+  metrics             Json // { efficiency: "+65%", wasteReduction: "-15%" }
+  testimonialQuote    String
+  imageUrl            String?
+  tags                String[]
+  isPublished         Boolean @default(false)
+  isFeatured          Boolean @default(false)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  publishedAt         DateTime?
+  
+  @@index([isPublished, isFeatured])
+  @@map("marketing_case_studies")
 }
