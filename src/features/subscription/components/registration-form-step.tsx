@@ -40,8 +40,8 @@ import { useSubscriptionStore } from '../store/subscription.store'
 import { registrationDataSchema, type RegistrationData } from '../schemas/subscription.schema'
 import { usePackageValidation } from '../lib/package-validation'
 import PackageValidationAlert, { FieldValidationFeedback } from './package-validation-alert'
-import { useEnhancedRegistrationValidation } from '../lib/enhanced-registration-validation'
-import EnhancedValidationAlert from './enhanced-validation-alert'
+import { useEnhancedRegistrationValidation } from '../lib/registration-validation'
+import EnhancedValidationAlert from './validation-alert'
 
 // ================================================================================
 // ENTERPRISE TYPE DEFINITIONS

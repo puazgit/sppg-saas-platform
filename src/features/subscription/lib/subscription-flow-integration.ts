@@ -7,7 +7,7 @@ import React from 'react'
 import { RegistrationData } from '../schemas/subscription.schema'
 import { SubscriptionPackage } from '../services/subscription-api'
 import { PaymentCalculator, PaymentBreakdown } from './payment-calculator'
-import { EnhancedRegistrationValidator } from './enhanced-registration-validation'
+import { EnhancedRegistrationValidator } from './registration-validation'
 import { PackageValidator } from './package-validation'
 
 export interface SubscriptionFlowTest {

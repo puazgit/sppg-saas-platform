@@ -24,7 +24,7 @@ import {
   Clock
 } from 'lucide-react'
 
-import { EnhancedValidationResult } from '../lib/enhanced-registration-validation'
+import { EnhancedValidationResult } from '../lib/registration-validation'
 import { SubscriptionPackage } from '../services/subscription-api'
 
 interface EnhancedValidationAlertProps {

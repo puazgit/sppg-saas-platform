@@ -11,7 +11,7 @@ import {
   EnhancedRegistrationValidator, 
   EnhancedValidationResult,
   ORGANIZATION_VALIDATION_RULES 
-} from './enhanced-registration-validation'
+} from './registration-validation'
 
 export interface ProgressiveValidationState {
   // Step validation states
