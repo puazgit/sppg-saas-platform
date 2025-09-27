@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { 
-  Check, X, Star, Crown, Zap, Shield, 
+  Check, Star, Crown, Zap, Shield, 
   Phone, Mail, ArrowRight, Sparkles
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -121,8 +121,8 @@ export const PricingSection = () => {
     router.push(`/subscription?package=${packageTier.toLowerCase()}&billing=${billingType}`)
   }
 
-  const { data: packagesData, isLoading, error, refetch } = useQuery<{ packages: SubscriptionPackage[] }>({
-    queryKey: ['subscription-packages'],
+  const { data: packagesData, isLoading, error, refetch } = useQuery<{ packages: SubscriptionPackage[]; success: boolean }>({
+    queryKey: ['marketing-packages'],
     queryFn: async () => {
       try {
         const response = await fetch('/api/marketing/packages', {
@@ -138,7 +138,7 @@ export const PricingSection = () => {
         
         const data = await response.json()
         
-        // Validate response structure
+        // Validate response structure for marketing API format
         if (!data || !Array.isArray(data.packages)) {
           console.warn('[PricingSection] Invalid API response structure:', data)
           throw new Error('Invalid response structure')
@@ -364,12 +364,12 @@ export const PricingSection = () => {
                     </div>
                   </div>
 
-                  {/* Features */}
+                  {/* Key Features */}
                   <div className="space-y-4 mb-8">
                     <div className="space-y-3">
-                      {(pkg.features || pkg.highlightFeatures || []).slice(0, 6).map((feature, idx) => (
+                      {(pkg.highlightFeatures || pkg.features || []).slice(0, 4).map((feature, idx) => (
                         <div key={idx} className="flex items-start space-x-3">
-                          <Check className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                          <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
                             pkg.isEnterprise ? 'text-green-400' : 'text-green-500'
                           }`} />
                           <span className={`text-sm ${pkg.isEnterprise ? 'text-indigo-100' : 'text-gray-700'}`}>
@@ -377,28 +377,35 @@ export const PricingSection = () => {
                           </span>
                         </div>
                       ))}
+                      {(pkg.highlightFeatures || pkg.features || []).length > 4 && (
+                        <div className={`text-xs font-medium ${
+                          pkg.isEnterprise ? 'text-indigo-300' : 'text-blue-600'
+                        }`}>
+                          +{(pkg.highlightFeatures || pkg.features || []).length - 4} fitur lainnya
+                        </div>
+                      )}
                     </div>
 
-                    {/* Limitations */}
-                    {(pkg.limitations && pkg.limitations.length > 0) && (
-                      <div className="pt-4 border-t border-gray-200 space-y-2">
-                        {pkg.limitations.slice(0, 2).map((limitation, idx) => (
-                          <div key={idx} className="flex items-start space-x-3">
-                            <X className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-xs text-gray-500">
-                              {limitation}
-                            </span>
-                          </div>
-                        ))}
+                    {/* Core Limits - Simplified */}
+                    <div className={`pt-4 border-t ${pkg.isEnterprise ? 'border-indigo-700' : 'border-gray-200'} space-y-2 text-xs ${
+                      pkg.isEnterprise ? 'text-indigo-300' : 'text-gray-500'
+                    }`}>
+                      <div className="flex justify-between">
+                        <span>Penerima:</span>
+                        <span className="font-medium">
+                          {(pkg.maxRecipients ?? 0) === -1 || (pkg.maxRecipients ?? 0) > 100000 ? 'Unlimited' : (pkg.maxRecipients ?? 0).toLocaleString()}
+                        </span>
                       </div>
-                    )}
-
-                    {/* Limits */}
-                    <div className={`pt-4 space-y-2 text-xs ${pkg.isEnterprise ? 'text-indigo-300' : 'text-gray-500'}`}>
-                      <div>• Maks {(pkg.maxSppg ?? pkg.maxRecipients ?? 0) === -1 ? 'Unlimited' : (pkg.maxSppg ?? pkg.maxRecipients ?? 0)} SPPG</div>
-                      <div>• Maks {(pkg.maxUsers ?? pkg.maxStaff ?? 0) === -1 ? 'Unlimited' : (pkg.maxUsers ?? pkg.maxStaff ?? 0)} Users</div>
-                      <div>• Maks {(pkg.maxSchools ?? pkg.maxDistributionPoints ?? 0) === -1 ? 'Unlimited' : (pkg.maxSchools ?? pkg.maxDistributionPoints ?? 0)} Sekolah</div>
-                      <div>• Support: {pkg.supportLevel}</div>
+                      <div className="flex justify-between">
+                        <span>Staff:</span>
+                        <span className="font-medium">
+                          {(pkg.maxStaff ?? 0) === -1 || (pkg.maxStaff ?? 0) > 1000 ? 'Unlimited' : (pkg.maxStaff ?? 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Support:</span>
+                        <span className="font-medium">{pkg.supportLevel}</span>
+                      </div>
                     </div>
                   </div>
 
