@@ -138,29 +138,12 @@ export const PAYMENT_METHODS: Record<PaymentMethod, PaymentMethodOption> = {
   }
 };
 
-export const BANK_ACCOUNTS = {
-  BCA: {
-    bankCode: 'BCA',
-    bankName: 'Bank Central Asia',
-    accountNumber: '1234567890',
-    accountName: 'PT SPPG Platform Indonesia',
-    branch: 'Jakarta Pusat'
-  },
-  BNI: {
-    bankCode: 'BNI',
-    bankName: 'Bank Negara Indonesia',
-    accountNumber: '0987654321',
-    accountName: 'PT SPPG Platform Indonesia',
-    branch: 'Jakarta Pusat'
-  },
-  MANDIRI: {
-    bankCode: 'MANDIRI',
-    bankName: 'Bank Mandiri',
-    accountNumber: '1122334455',
-    accountName: 'PT SPPG Platform Indonesia',
-    branch: 'Jakarta Pusat'
-  }
-};
+// DEPRECATED: Use /api/billing/payment/bank-accounts endpoint instead
+// This hardcode data has been replaced by API-driven configuration
+export const BANK_ACCOUNTS = {} as const // Empty - use API instead
+
+// OLD HARDCODE DATA REMOVED - Now available via API endpoint
+// /api/billing/payment/bank-accounts provides real account information
 
 export const VIRTUAL_ACCOUNT_BANKS = [
   { code: 'BCA', name: 'BCA Virtual Account' },

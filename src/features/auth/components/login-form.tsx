@@ -22,7 +22,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm(props: LoginFormProps = {}) {
-  const { onSuccess, redirectTo = '/dashboard' } = props
+  const { onSuccess, redirectTo } = props
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,9 +53,25 @@ export function LoginForm(props: LoginFormProps = {}) {
       }
 
       if (result?.ok) {
-        onSuccess?.()
-        router.push(redirectTo)
-        router.refresh()
+        // Wait a moment for session to update
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Get fresh session after login
+        const response = await fetch('/api/auth/session')
+        const sessionData = await response.json()
+        
+        if (sessionData?.user) {
+          const userType = sessionData.user.userType
+          
+          // Auto-redirect based on user type
+          const redirectPath = redirectTo || (userType === 'SPPG_USER' ? '/sppg' : '/superadmin')
+          
+          onSuccess?.()
+          router.push(redirectPath)
+          router.refresh()
+        } else {
+          setError('Gagal mendapatkan informasi user. Silakan coba lagi.')
+        }
       }
     } catch (error) {
       console.error('Login error:', error)

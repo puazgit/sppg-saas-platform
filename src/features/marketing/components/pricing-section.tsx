@@ -49,54 +49,7 @@ interface SubscriptionPackage {
   targetMarket?: string
 }
 
-// Fallback packages for enterprise reliability
-const FALLBACK_PACKAGES: SubscriptionPackage[] = [
-  {
-    id: 'basic-fallback',
-    name: 'Basic',
-    tier: 'BASIC',
-    monthlyPrice: 0,
-    yearlyPrice: 0,
-    description: 'Starter package for small SPPG organizations',
-    supportLevel: 'Community',
-    isPopular: false,
-    isActive: true
-  },
-  {
-    id: 'standard-fallback',
-    name: 'Standard',
-    tier: 'STANDARD',
-    monthlyPrice: 250000,
-    yearlyPrice: 2500000,
-    description: 'Most popular choice for growing organizations',
-    supportLevel: 'Email',
-    isPopular: true,
-    isActive: true
-  },
-  {
-    id: 'pro-fallback',
-    name: 'Pro',
-    tier: 'PRO',
-    monthlyPrice: 500000,
-    yearlyPrice: 5000000,
-    description: 'Advanced features for established SPPG operations',
-    supportLevel: 'Priority',
-    isPopular: false,
-    isActive: true
-  },
-  {
-    id: 'enterprise-fallback',
-    name: 'Enterprise',
-    tier: 'ENTERPRISE',
-    monthlyPrice: 1000000,
-    yearlyPrice: 10000000,
-    description: 'Full-scale solution for large organizations',
-    supportLevel: '24/7',
-    isPopular: false,
-    isEnterprise: true,
-    isActive: true
-  }
-]
+// NO HARDCODE FALLBACK - Use database API only!
 
 const tierIcons = {
   BASIC: Star,
@@ -209,10 +162,8 @@ export const PricingSection = () => {
     )
   }
 
-  // Use fetched data or fallback to ensure cards never disappear
-  const packages = (packagesData?.packages && packagesData.packages.length > 0) 
-    ? packagesData.packages 
-    : FALLBACK_PACKAGES
+  // NO FALLBACK - Must use database packages only
+  const packages = packagesData?.packages || []
 
   // Always render with available packages
 

@@ -8,10 +8,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sppgId: string } }
+  { params }: { params: Promise<{ sppgId: string }> }
 ) {
   try {
-    const { sppgId } = params
+        const { sppgId } = await params
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '10')

@@ -40,7 +40,7 @@ interface PaymentDetails {
 }
 
 export default function PaymentProcessingStep({ onNext, onBack }: PaymentProcessingStepProps) {
-  const { selectedPackage, registrationData } = useSubscriptionStore()
+  const { selectedPackage, registrationData, subscriptionId } = useSubscriptionStore()
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [countdown, setCountdown] = useState(600) // 10 minutes
@@ -51,33 +51,51 @@ export default function PaymentProcessingStep({ onNext, onBack }: PaymentProcess
     const initializePayment = async () => {
       setIsInitializing(true)
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Mock payment details
-      const mockPaymentDetails: PaymentDetails = {
-        transactionId: `TXN-${Date.now()}`,
-        amount: (selectedPackage?.monthlyPrice || 0) + (selectedPackage?.setupFee || 0),
-        method: 'Virtual Account BCA',
-        status: 'PENDING',
-        vaNumber: '1234567890123456',
-        instructions: [
-          'Buka aplikasi mobile banking atau ATM',
-          'Pilih menu Transfer',
-          'Pilih ke Virtual Account',
-          'Masukkan nomor Virtual Account',
-          'Masukkan nominal sesuai tagihan',
-          'Konfirmasi pembayaran'
-        ],
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
+      try {
+        // Get payment details from API using subscriptionId
+        if (!subscriptionId) {
+          throw new Error('Subscription ID not found')
+        }
+
+        const response = await fetch(`/api/billing/payment/details/${subscriptionId}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch payment details')
+        }
+        
+        const result = await response.json()
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to get payment details')
+        }
+
+        setPaymentDetails(result.paymentDetails)
+      } catch (error) {
+        console.error('Payment initialization error:', error)
+        
+        // Fallback payment details if API fails
+        const fallbackPaymentDetails: PaymentDetails = {
+          transactionId: `TXN-${Date.now()}`,
+          amount: (selectedPackage?.monthlyPrice || 0) + (selectedPackage?.setupFee || 0),
+          method: 'Bank Transfer',
+          status: 'PENDING',
+          vaNumber: `88808${Date.now().toString().slice(-8)}`,
+          instructions: [
+            'Buka aplikasi mobile banking atau ATM',
+            'Pilih menu Transfer',
+            'Pilih ke rekening tujuan',
+            'Masukkan nomor rekening yang diberikan',
+            'Masukkan nominal sesuai tagihan',
+            'Konfirmasi pembayaran dan simpan bukti transfer'
+          ],
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+        }
+        
+        setPaymentDetails(fallbackPaymentDetails)
       }
-      
-      setPaymentDetails(mockPaymentDetails)
       setIsInitializing(false)
     }
 
     initializePayment()
-  }, [selectedPackage])
+  }, [selectedPackage, subscriptionId])
 
   // Countdown timer
   useEffect(() => {

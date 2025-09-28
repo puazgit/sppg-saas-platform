@@ -5,7 +5,7 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import {
 
 import { useSubscriptionStore } from '../store/subscription.store'
 import { formatCurrency } from '../lib/utils'
+import { getPositionDisplayName } from '../constants/enums'
 
 interface ConfirmationStepProps {
   onNext: () => void
@@ -35,7 +36,75 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
     dataProcessing: false,
     governmentCompliance: false
   })
-  const [isCreatingSubscription, setIsCreatingSubscription] = useState(false)
+  const [, setIsCreatingSubscription] = useState(false)
+  const [regionNames, setRegionNames] = useState<{
+    province?: string
+    regency?: string
+    district?: string
+    village?: string
+  }>({})
+  const [loadingRegions, setLoadingRegions] = useState(false)
+
+  // Fetch region names from database
+  useEffect(() => {
+    const fetchRegionNames = async () => {
+      if (!registrationData?.provinceId) return
+
+      setLoadingRegions(true)
+      try {
+        const results = await Promise.allSettled([
+          fetch(`/api/regions/provinces/${registrationData.provinceId}`).then(res => res.json()),
+          registrationData.regencyId ? 
+            fetch(`/api/regions/regencies/detail/${registrationData.regencyId}`).then(res => res.json()) : 
+            Promise.resolve(null),
+          registrationData.districtId ? 
+            fetch(`/api/regions/districts/detail/${registrationData.districtId}`).then(res => res.json()) : 
+            Promise.resolve(null),
+          registrationData.villageId ? 
+            fetch(`/api/regions/villages/detail/${registrationData.villageId}`).then(res => res.json()) : 
+            Promise.resolve(null)
+        ])
+
+        const [provinceResult, regencyResult, districtResult, villageResult] = results
+
+        setRegionNames({
+          province: provinceResult.status === 'fulfilled' && provinceResult.value?.success ? 
+            provinceResult.value.data.name : undefined,
+          regency: regencyResult.status === 'fulfilled' && regencyResult.value?.success ? 
+            regencyResult.value.data.name : undefined,
+          district: districtResult.status === 'fulfilled' && districtResult.value?.success ? 
+            districtResult.value.data.name : undefined,
+          village: villageResult.status === 'fulfilled' && villageResult.value?.success ? 
+            villageResult.value.data.name : undefined,
+        })
+      } catch (error) {
+        console.error('[Confirmation] Failed to fetch region names:', error)
+        // Fallback to IDs if API fails
+        setRegionNames({
+          province: `Province ID: ${registrationData.provinceId}`,
+          regency: registrationData.regencyId ? `Regency ID: ${registrationData.regencyId}` : undefined,
+          district: registrationData.districtId ? `District ID: ${registrationData.districtId}` : undefined,
+          village: registrationData.villageId ? `Village ID: ${registrationData.villageId}` : undefined,
+        })
+      } finally {
+        setLoadingRegions(false)
+      }
+    }
+
+    fetchRegionNames()
+  }, [registrationData?.provinceId, registrationData?.regencyId, registrationData?.districtId, registrationData?.villageId])
+
+  // Helper function to get formatted region display
+  const getRegionDisplayName = (): string => {
+    if (loadingRegions) return 'Mengambil data wilayah...'
+    
+    const parts = []
+    if (regionNames.district) parts.push(regionNames.district)
+    if (regionNames.regency) parts.push(regionNames.regency)
+    if (regionNames.province) parts.push(regionNames.province)
+    
+    return parts.length > 0 ? parts.join(', ') : 'Wilayah belum dipilih'
+  }
 
   const handleConfirm = async () => {
     if (!allAgreementsChecked()) {
@@ -52,46 +121,252 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
 
     try {
       console.log('[Confirmation] Creating subscription...')
+      console.log('[Confirmation] Raw registration data:', registrationData)
+      console.log('[Confirmation] Selected package:', selectedPackage)
       
-      // Prepare subscription data
+      // Step 1: Import dependencies
+      console.log('[Confirmation] Step 1: Importing app config...')
+      let APP_CONFIG
+      try {
+        const configModule = await import('@/lib/app-config')
+        APP_CONFIG = configModule.APP_CONFIG
+        console.log('[Confirmation] App config imported successfully')
+        console.log('[Confirmation] Available config methods:', Object.keys(APP_CONFIG.calculations))
+      } catch (importError) {
+        console.error('[Confirmation] Failed to import app config:', importError)
+        console.error('[Confirmation] Import error details:', {
+          message: importError instanceof Error ? importError.message : String(importError),
+          stack: importError instanceof Error ? importError.stack : undefined
+        })
+        throw new Error(`Gagal memuat konfigurasi aplikasi: ${importError instanceof Error ? importError.message : 'Unknown error'}`)
+      }
+      
+      // Step 2: Setup helper functions
+      console.log('[Confirmation] Step 2: Setting up helper functions...')
+      
+      // Dynamic organization type mapping based on context
+      const mapOrganizationType = (orgType: string): 'SEKOLAH' | 'PUSKESMAS' | 'POSYANDU' | 'NGO' => {
+        // Use intelligent mapping based on organization characteristics
+        if (orgType.includes('SEKOLAH') || orgType.includes('PENDIDIKAN')) return 'SEKOLAH'
+        if (orgType.includes('KESEHATAN') || orgType.includes('PUSKESMAS')) return 'PUSKESMAS'
+        if (orgType.includes('POSYANDU') || orgType.includes('BALITA')) return 'POSYANDU'
+        if (orgType === 'PEMERINTAH') return 'SEKOLAH' // Most government SPPG are school-based
+        return 'NGO' // Default for YAYASAN, KOMUNITAS, LAINNYA
+      }
+
+      // Step 3: Process registration data
+      console.log('[Confirmation] Step 3: Processing registration data...')
+      
+      // Get values directly from form data
+      const targetRecipients = Number(registrationData.targetRecipients) || 0
+      const orgType = registrationData.organizationType || 'PEMERINTAH'
+      console.log('[Confirmation] Target recipients:', targetRecipients, 'Organization type:', orgType)
+
+      // Calculate dynamic values if targetRecipients is valid
+      let currentStaff = 0
+      if (targetRecipients > 0) {
+        console.log('[Confirmation] Calculating staff needs...')
+        currentStaff = APP_CONFIG.calculations.calculateStaffNeeds(targetRecipients)
+        console.log('[Confirmation] Current staff calculated:', currentStaff)
+      }
+
+      // Step 4: Validate required data - STRICT validation without fallbacks
+      console.log('[Confirmation] Step 4: Validating required data...')
+      
+      if (!selectedPackage?.id) {
+        console.error('[Confirmation] Validation failed: Package not selected')
+        throw new Error('Package belum dipilih')
+      }
+      
+      // Validate all required fields without fallbacks
+      const requiredFields = [
+        { field: 'name', value: registrationData?.name, label: 'Nama organisasi' },
+        { field: 'address', value: registrationData?.address, label: 'Alamat lengkap' },
+        { field: 'phone', value: registrationData?.phone, label: 'Nomor telepon' },
+        { field: 'email', value: registrationData?.email, label: 'Email' },
+        { field: 'picName', value: registrationData?.picName, label: 'Nama PIC' },
+        { field: 'picPosition', value: registrationData?.picPosition, label: 'Jabatan PIC' },
+        { field: 'picPhone', value: registrationData?.picPhone, label: 'Telepon PIC' },
+        { field: 'picEmail', value: registrationData?.picEmail, label: 'Email PIC' },
+        { field: 'provinceId', value: registrationData?.provinceId, label: 'Provinsi' },
+        { field: 'regencyId', value: registrationData?.regencyId, label: 'Kabupaten/Kota' },
+        { field: 'districtId', value: registrationData?.districtId, label: 'Kecamatan' },
+        { field: 'villageId', value: registrationData?.villageId, label: 'Desa/Kelurahan' },
+        { field: 'postalCode', value: registrationData?.postalCode, label: 'Kode pos' },
+        { field: 'targetRecipients', value: registrationData?.targetRecipients, label: 'Target penerima' },
+      ]
+
+      const missingFields = requiredFields.filter(({ value }) => 
+        !value || (typeof value === 'string' && value.trim().length === 0) || (typeof value === 'number' && value <= 0)
+      )
+
+      if (missingFields.length > 0) {
+        const missingFieldNames = missingFields.map(({ label }) => label).join(', ')
+        console.error('[Confirmation] Missing required fields:', missingFields)
+        throw new Error(`Data wajib belum lengkap: ${missingFieldNames}`)
+      }
+      
+      console.log('[Confirmation] All required fields validation passed')
+
+      // Step 5: Prepare subscription data
+      console.log('[Confirmation] Step 5: Preparing subscription data...')
+      
+      // Additional validation for critical data
+      if (!targetRecipients || targetRecipients <= 0) {
+        throw new Error('Target recipients harus lebih dari 0')
+      }
+      
+      if (!registrationData.provinceId || !registrationData.regencyId) {
+        throw new Error('Data wilayah (provinsi dan kabupaten/kota) wajib diisi')
+      }
+      
+      console.log('[Confirmation] Validating picPosition:', registrationData.picPosition)
+      console.log('[Confirmation] Using picPosition from form data:', registrationData.picPosition)
+      
+      // Prepare subscription data sesuai dengan CreateSubscriptionRequestSchema - NO HARDCODE
+      console.log('[Confirmation] Building subscription data with values:')
+      console.log('  - selectedPackage.id:', selectedPackage.id)
+      console.log('  - registrationData.name:', registrationData.name?.trim())
+      console.log('  - orgType:', orgType, '-> mapped to:', mapOrganizationType(orgType))
+      console.log('  - estimatedRecipients:', Number(registrationData.targetRecipients!))
+      console.log('  - currentStaff calculation:', Number(currentStaff))
+
       const subscriptionData = {
         packageId: selectedPackage.id,
         sppgData: {
-          sppgName: registrationData.name || '',
-          sppgType: registrationData.organizationType || '',
-          address: registrationData.address || '',
-          city: registrationData.city || '',
-          province: registrationData.provinceId || '',
-          phone: registrationData.phone || '',
-          email: registrationData.email || '',
-          picName: registrationData.picName || '',
-          picPosition: registrationData.picPosition || '',
-          picEmail: registrationData.picEmail || registrationData.email || '',
-          picPhone: registrationData.picPhone || registrationData.phone || '',
-          picWhatsapp: registrationData.picWhatsapp,
-          organizationType: registrationData.organizationType,
-          establishedYear: registrationData.establishedYear,
-          estimatedRecipients: registrationData.targetRecipients || 0,
+          sppgName: registrationData.name!.trim(),
+          sppgType: mapOrganizationType(orgType),
+          address: registrationData.address!.trim(),
+          
+          // Location menggunakan ID real dari form
+          provinceId: registrationData.provinceId!,
+          regencyId: registrationData.regencyId!,
+          districtId: registrationData.districtId!,
+          villageId: registrationData.villageId!,
+          
+          postalCode: registrationData.postalCode!.trim(),
+          phone: registrationData.phone!.trim(),
+          email: registrationData.email!.trim(),
+          picName: registrationData.picName!.trim(),
+          picPosition: registrationData.picPosition!,
+          picPhone: registrationData.picPhone!.trim(),
+          picEmail: registrationData.picEmail!.trim(),
+          estimatedRecipients: Number(registrationData.targetRecipients!),
+          currentStaff: Math.max(1, Number(currentStaff)),
+          hasExistingSystem: APP_CONFIG.calculations.inferSystemExperience(orgType),
+          needsTraining: APP_CONFIG.calculations.inferTrainingNeeds(orgType),
         },
         paymentData: {
-          paymentMethod: 'BANK_TRANSFER',
-          billingCycle: 'MONTHLY', // Default to monthly
+          paymentMethod: 'BANK_TRANSFER' as const,
+          billingCycle: 'MONTHLY' as const,
         }
       }
 
-      // Create subscription via API
-      const response = await fetch('/api/billing/subscription/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(subscriptionData),
+      console.log('[Confirmation] Final subscription data validation:')
+      console.log('  - packageId exists:', !!subscriptionData.packageId)
+      console.log('  - packageId value:', subscriptionData.packageId)
+      console.log('  - sppgName length:', subscriptionData.sppgData.sppgName.length)
+      console.log('  - sppgName value:', subscriptionData.sppgData.sppgName)
+      console.log('  - provinceId exists:', !!subscriptionData.sppgData.provinceId)
+      console.log('  - provinceId value:', subscriptionData.sppgData.provinceId)
+      console.log('  - regencyId exists:', !!subscriptionData.sppgData.regencyId)  
+      console.log('  - regencyId value:', subscriptionData.sppgData.regencyId)
+      console.log('  - districtId value:', subscriptionData.sppgData.districtId)
+      console.log('  - villageId value:', subscriptionData.sppgData.villageId)
+      console.log('  - estimatedRecipients type:', typeof subscriptionData.sppgData.estimatedRecipients)
+      console.log('  - estimatedRecipients value:', subscriptionData.sppgData.estimatedRecipients)
+      console.log('  - currentStaff type:', typeof subscriptionData.sppgData.currentStaff)
+      console.log('  - currentStaff value:', subscriptionData.sppgData.currentStaff)
+      
+      console.log('[Confirmation] Subscription data prepared successfully')
+      
+      // Detailed logging for debugging
+      console.log('[Confirmation] Prepared subscription data structure:', {
+        packageId: subscriptionData.packageId,
+        sppgDataKeys: Object.keys(subscriptionData.sppgData),
+        paymentDataKeys: Object.keys(subscriptionData.paymentData),
+        sppgDataSample: {
+          sppgName: subscriptionData.sppgData.sppgName,
+          sppgType: subscriptionData.sppgData.sppgType,
+          estimatedRecipients: subscriptionData.sppgData.estimatedRecipients,
+          currentStaff: subscriptionData.sppgData.currentStaff,
+          provinceId: subscriptionData.sppgData.provinceId,
+          regencyId: subscriptionData.sppgData.regencyId
+        }
       })
 
-      const result = await response.json()
+      console.log('[Confirmation] Sending subscription data:', JSON.stringify(subscriptionData, null, 2))
+
+      // Create subscription via API
+      console.log('[Confirmation] Sending data to API:', JSON.stringify(subscriptionData, null, 2))
+
+      let response
+      try {
+        console.log('[Confirmation] Making fetch request to /api/billing/subscription/create...')
+        response = await fetch('/api/billing/subscription/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(subscriptionData),
+        })
+        console.log('[Confirmation] Fetch completed successfully')
+      } catch (fetchError) {
+        console.error('[Confirmation] Fetch failed:', fetchError)
+        throw new Error(`Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown fetch error'}`)
+      }
+
+      console.log('[Confirmation] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      let result
+      const responseText = await response.text()
+      console.log('[Confirmation] Raw response text:', responseText)
+      
+      try {
+        result = JSON.parse(responseText)
+        console.log('[Confirmation] Parsed result:', result)
+      } catch (parseError) {
+        console.error('[Confirmation] Failed to parse JSON response:', parseError)
+        console.error('[Confirmation] Raw response text:', responseText)
+        throw new Error(`Server response tidak valid. Status: ${response.status} ${response.statusText}`)
+      }
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to create subscription')
+        const errorDetails = {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          resultSuccess: result?.success,
+          resultError: result?.error,
+          resultDetails: result?.details,
+          hasResult: !!result,
+          resultKeys: result ? Object.keys(result) : [],
+          requestDataKeys: subscriptionData ? Object.keys(subscriptionData) : []
+        }
+        console.error('[Confirmation] API Error Details:', JSON.stringify(errorDetails, null, 2))
+        console.error('[Confirmation] Full result object:', JSON.stringify(result, null, 2))
+        console.error('[Confirmation] Request data sent:', JSON.stringify(subscriptionData, null, 2))
+        
+        // Show detailed validation errors if available
+        if (result.details && Array.isArray(result.details)) {
+          // Log individual errors for debugging
+          console.error('[Confirmation] Validation errors:')
+          result.details.forEach((detail: { path?: string[]; message: string }, index: number) => {
+            console.error(`  ${index + 1}. Path: ${detail.path?.join('.')} - ${detail.message}`)
+          })
+          
+          const errorMessages = result.details.map((detail: { path?: string[]; message: string }) => 
+            detail.message
+          ).join('\n• ')
+          throw new Error(`Data tidak valid:\n• ${errorMessages}`)
+        }
+        
+        throw new Error(result.error || 'Gagal membuat subscription. Silakan coba lagi.')
       }
 
       console.log('[Confirmation] Subscription created successfully:', result)
@@ -103,7 +378,18 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
       onNext()
       
     } catch (error) {
-      console.error('[Confirmation] Error creating subscription:', error)
+      const errorInfo = {
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        hasRegistrationData: !!registrationData,
+        hasSelectedPackage: !!selectedPackage,
+        registrationDataKeys: registrationData ? Object.keys(registrationData) : [],
+        selectedPackageKeys: selectedPackage ? Object.keys(selectedPackage) : []
+      }
+      console.error('[Confirmation] Caught error details:', JSON.stringify(errorInfo, null, 2))
+      console.error('[Confirmation] Full error object:', error)
+      
       setError(`Gagal membuat subscription: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsCreatingSubscription(false)
@@ -275,7 +561,7 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Posisi/Jabatan</label>
-                  <p className="font-semibold">{registrationData.picPosition}</p>
+                  <p className="font-semibold">{getPositionDisplayName(registrationData.picPosition || 'SPPG_MANAGER')}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 flex items-center gap-1">
@@ -295,6 +581,34 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
             </CardContent>
           </Card>
 
+          {/* Contact Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-blue-600" />
+                Kontak Organisasi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    Nomor Telepon Utama
+                  </label>
+                  <p className="font-semibold">{registrationData.phone}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 flex items-center gap-1">
+                    <Mail className="h-4 w-4" />
+                    Email Utama
+                  </label>
+                  <p className="font-semibold text-blue-600">{registrationData.email}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Location & Address */}
           <Card>
             <CardHeader>
@@ -309,18 +623,16 @@ export function ConfirmationStep({ onNext, onBack }: ConfirmationStepProps) {
                 <p className="font-semibold">{registrationData.address}</p>
               </div>
               
-              <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Kota</label>
-                  <p className="font-semibold">{registrationData.city}</p>
-                </div>
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Kode Pos</label>
                   <p className="font-semibold">{registrationData.postalCode}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Timezone</label>
-                  <p className="font-semibold">{registrationData.timezone}</p>
+                  <label className="text-sm font-medium text-gray-500">Wilayah Administratif</label>
+                  <p className="font-semibold">
+                    {getRegionDisplayName()}
+                  </p>
                 </div>
               </div>
             </CardContent>

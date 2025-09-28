@@ -59,7 +59,7 @@ export const ContactSection = () => {
       title: 'Telepon',
       value: '+62 21 1234-5678',
       description: 'Senin - Jumat, 09:00 - 18:00 WIB',
-      action: 'tel:+622112345678'
+      action: `tel:${process.env.NEXT_PUBLIC_COMPANY_PHONE || '+6221-XXX-XXXX'}`
     },
     {
       icon: Mail,
@@ -73,7 +73,7 @@ export const ContactSection = () => {
       title: 'WhatsApp',
       value: '+62 812-3456-7890',
       description: 'Chat langsung dengan tim support',
-      action: 'https://wa.me/6281234567890'
+      action: `https://wa.me/${(process.env.NEXT_PUBLIC_COMPANY_WHATSAPP || '+62812-XXXX-XXXX').replace(/[^0-9]/g, '')}`
     }
   ]
 

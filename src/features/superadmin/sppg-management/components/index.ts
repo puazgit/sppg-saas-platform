@@ -1,0 +1,1 @@
+export { default as SPPGManagement } from './sppg-management'

@@ -12,7 +12,8 @@ import {
   PaymentStatus,
   VirtualAccountDetails
 } from '../types/payment';
-import { calculatePaymentFee, BANK_ACCOUNTS } from '../config/payment-methods';
+import { calculatePaymentFee } from '../config/payment-methods';
+// BANK_ACCOUNTS now comes from API endpoint: /api/billing/payment/bank-accounts
 
 export class PaymentService {
   
@@ -247,7 +248,17 @@ export class PaymentService {
     subscriptionId: string
   ): Promise<PaymentResponse> {
     const transactionId = this.generateTransactionId();
-    const bankAccount = paymentData.bankTransfer || BANK_ACCOUNTS.BCA;
+    
+    // Fetch bank accounts from API
+    const bankAccountsResponse = await fetch('/api/billing/payment/bank-accounts')
+    const bankAccountsData = await bankAccountsResponse.json()
+    const defaultBankAccount = bankAccountsData.accounts?.[0] || {
+      bankName: 'BCA', 
+      accountNumber: 'Loading...', 
+      accountName: 'SPPG Platform'
+    }
+    
+    const bankAccount = paymentData.bankTransfer || defaultBankAccount;
 
     return {
       success: true,

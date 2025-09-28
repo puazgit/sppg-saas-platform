@@ -42,13 +42,14 @@ import { usePackageValidation } from '../lib/package-validation'
 import PackageValidationAlert, { FieldValidationFeedback } from './package-validation-alert'
 import { useEnhancedRegistrationValidation } from '../lib/registration-validation'
 import EnhancedValidationAlert from './validation-alert'
+import { STAFF_POSITIONS, STAFF_POSITION_VALUES } from '../constants/enums'
 
 // ================================================================================
 // ENTERPRISE TYPE DEFINITIONS
 // ================================================================================
 
 interface RegistrationFormStepProps {
-  onNext: () => void
+  onNext?: () => void  // Made optional since we handle submission internally
   onBack: () => void
 }
 
@@ -80,7 +81,7 @@ const FORM_STEPS: FormStep[] = [
     title: 'Data Organisasi SPPG',
     description: 'Informasi dasar dan identitas organisasi',
     icon: Building2,
-    fields: ['code', 'name', 'organizationType', 'description', 'establishedYear', 'phone', 'email'],
+    fields: ['code', 'name', 'organizationType', 'description'],
     color: 'blue'
   },
   {
@@ -96,7 +97,7 @@ const FORM_STEPS: FormStep[] = [
     title: 'Lokasi & Alamat SPPG', 
     description: 'Alamat lengkap dan wilayah administratif',
     icon: MapPin,
-    fields: ['provinceId', 'regencyId', 'districtId', 'villageId', 'address', 'postalCode'],
+    fields: ['provinceId', 'regencyId', 'districtId', 'villageId', 'address', 'postalCode', 'phone', 'email'],
     color: 'orange'
   },
   {
@@ -104,7 +105,7 @@ const FORM_STEPS: FormStep[] = [
     title: 'Parameter Operasional',
     description: 'Konfigurasi kapasitas dan cakupan operasional',
     icon: Building2,
-    fields: ['targetRecipients', 'maxRadius', 'maxTravelTime'],
+    fields: ['targetRecipients', 'maxRadius', 'maxTravelTime', 'establishedYear'],
     color: 'purple'
   },
   {
@@ -133,15 +134,27 @@ const ORGANIZATION_TYPES = [
 // MAIN ENTERPRISE COMPONENT
 // ================================================================================
 
-export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepProps) {
+export function RegistrationFormStep({ onBack }: RegistrationFormStepProps) {
   // ================================
   // ENTERPRISE STATE MANAGEMENT
   // ================================
-  const { registrationData, setRegistrationData, isLoading, selectedPackage, upgradePackage } = useSubscriptionStore()
+  const { registrationData, setRegistrationData, isLoading, selectedPackage, upgradePackage, submitRegistration } = useSubscriptionStore()
   
   // Multi-level state management
   const [currentStep, setCurrentStep] = useState<number>(1)
   const [stepValidations, setStepValidations] = useState<Record<number, StepValidation>>({})
+  
+  // Region data states
+  const [provinces, setProvinces] = useState<Array<{id: string, name: string}>>([])
+  const [regencies, setRegencies] = useState<Array<{id: string, name: string}>>([])
+  const [districts, setDistricts] = useState<Array<{id: string, name: string}>>([])
+  const [villages, setVillages] = useState<Array<{id: string, name: string}>>([])
+  const [loadingRegions, setLoadingRegions] = useState({
+    provinces: false,
+    regencies: false,
+    districts: false,
+    villages: false
+  })
 
   // ================================
   // ENTERPRISE FORM CONFIGURATION
@@ -171,7 +184,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
       email: registrationData?.email || '',
       description: registrationData?.description || '',
       picName: registrationData?.picName || '',
-      picPosition: registrationData?.picPosition || '',
+      picPosition: registrationData?.picPosition || undefined,
       picEmail: registrationData?.picEmail || '',
       picPhone: registrationData?.picPhone || '',
       picWhatsapp: registrationData?.picWhatsapp || '',
@@ -191,6 +204,123 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
   const watchedData = watch()
   const packageValidation = usePackageValidation(watchedData, selectedPackage)
   const enhancedValidation = useEnhancedRegistrationValidation(watchedData, selectedPackage)
+
+  // ================================
+  // REAL DATABASE INTEGRATION - REGION APIS
+  // ================================
+
+  // Load provinces on component mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLoadingRegions(prev => ({ ...prev, provinces: true }))
+      try {
+        const response = await fetch('/api/regions/provinces')
+        const data = await response.json()
+        if (data.success) {
+          setProvinces(data.provinces || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch provinces:', error)
+      } finally {
+        setLoadingRegions(prev => ({ ...prev, provinces: false }))
+      }
+    }
+
+    fetchProvinces()
+  }, [])
+
+  // Load regencies when province changes
+  const currentProvinceId = watch('provinceId')
+  useEffect(() => {
+    if (currentProvinceId) {
+      const fetchRegencies = async () => {
+        setLoadingRegions(prev => ({ ...prev, regencies: true }))
+        setRegencies([])
+        setDistricts([])
+        setVillages([])
+        setValue('regencyId', '')
+        setValue('districtId', '')
+        setValue('villageId', '')
+        
+        try {
+          const response = await fetch(`/api/regions/regencies/${currentProvinceId}`)
+          const data = await response.json()
+          if (data.success) {
+            setRegencies(data.regencies || [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch regencies:', error)
+        } finally {
+          setLoadingRegions(prev => ({ ...prev, regencies: false }))
+        }
+      }
+
+      fetchRegencies()
+    } else {
+      setRegencies([])
+      setDistricts([])
+      setVillages([])
+    }
+  }, [currentProvinceId, setValue])
+
+  // Load districts when regency changes
+  const currentRegencyId = watch('regencyId')
+  useEffect(() => {
+    if (currentRegencyId) {
+      const fetchDistricts = async () => {
+        setLoadingRegions(prev => ({ ...prev, districts: true }))
+        setDistricts([])
+        setVillages([])
+        setValue('districtId', '')
+        setValue('villageId', '')
+        
+        try {
+          const response = await fetch(`/api/regions/districts/${currentRegencyId}`)
+          const data = await response.json()
+          if (data.success) {
+            setDistricts(data.districts || [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch districts:', error)
+        } finally {
+          setLoadingRegions(prev => ({ ...prev, districts: false }))
+        }
+      }
+
+      fetchDistricts()
+    } else {
+      setDistricts([])
+      setVillages([])
+    }
+  }, [currentRegencyId, setValue])
+
+  // Load villages when district changes
+  const currentDistrictId = watch('districtId')
+  useEffect(() => {
+    if (currentDistrictId) {
+      const fetchVillages = async () => {
+        setLoadingRegions(prev => ({ ...prev, villages: true }))
+        setVillages([])
+        setValue('villageId', '')
+        
+        try {
+          const response = await fetch(`/api/regions/villages/${currentDistrictId}`)
+          const data = await response.json()
+          if (data.success) {
+            setVillages(data.villages || [])
+          }
+        } catch (error) {
+          console.error('Failed to fetch villages:', error)
+        } finally {
+          setLoadingRegions(prev => ({ ...prev, villages: false }))
+        }
+      }
+
+      fetchVillages()
+    } else {
+      setVillages([])
+    }
+  }, [currentDistrictId, setValue])
 
   // ================================
   // ENTERPRISE VALIDATION ENGINE
@@ -232,6 +362,14 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
     const requiredFieldsCount = requiredFields.filter(field => !optionalFields.includes(field)).length
     const progress = requiredFieldsCount === 0 ? 100 : Math.round(((requiredFieldsCount - missingFields.length) / requiredFieldsCount) * 100)
     const isValid = missingFields.length === 0
+
+    console.log(`[VALIDATION DEBUG] Step ${step}:`, {
+      requiredFields,
+      missingFields,
+      progress,
+      isValid,
+      formValues: values
+    })
 
     // Package compatibility will be handled separately in the UI
     return {
@@ -276,7 +414,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
   /**
    * Enterprise step navigation with validation
    */
-  const handleNextStep = useCallback(() => {
+  const handleNextStep = useCallback(async () => {
     const validation = validateCurrentStep(currentStep)
     
     if (!validation.isValid) {
@@ -290,24 +428,49 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
       [currentStep]: validation
     }))
     
-    // If it's the last step, complete the form and go to next subscription step
+    // If it's the last step, submit registration and redirect to success
     if (currentStep === FORM_STEPS.length) {
-      console.log('[Enterprise] Last step completed, proceeding to next subscription step')
+      console.log('[Enterprise] Last step completed, submitting registration...')
       const formData = form.getValues()
       
       // Save to enterprise state management
       setRegistrationData(formData)
       
-      // Proceed to next step in subscription flow
-      onNext()
-      return
+      try {
+        // Submit registration via store
+        const result = await submitRegistration()
+        
+        if (result.success && result.data) {
+          // Redirect to success page with registration data
+          const queryParams = new URLSearchParams({
+            sppgId: result.data.sppgId,
+            subscriptionId: result.data.subscriptionId,
+            organizationName: result.data.organizationName,
+            email: result.data.email,
+            verificationSent: String(result.data.verificationSent),
+            trialEndDate: result.data.trialEndDate.toString()
+          })
+          
+          window.location.href = `/subscription/success?${queryParams.toString()}`
+          return
+        } else {
+          // Handle submission error
+          console.error('[Enterprise] Registration failed:', result.error)
+          alert(result.error || 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.')
+          return
+        }
+      } catch (error) {
+        console.error('[Enterprise] Registration submission error:', error)
+        alert('Terjadi kesalahan jaringan. Silakan periksa koneksi internet dan coba lagi.')
+        return
+      }
     }
     
     // Otherwise, go to next internal step
     if (currentStep < FORM_STEPS.length) {
       setCurrentStep(prev => prev + 1)
     }
-  }, [currentStep, validateCurrentStep, form, setRegistrationData, onNext])
+  }, [currentStep, validateCurrentStep, form, setRegistrationData, submitRegistration])
 
   /**
    * Enterprise form submission with comprehensive data processing
@@ -562,71 +725,13 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="establishedYear" className="font-medium">Tahun Berdiri</Label>
-          <Input
-            id="establishedYear"
-            type="number"
-            min="1945"
-            max={new Date().getFullYear()}
-            placeholder={String(new Date().getFullYear() - 1)}
-            {...register('establishedYear', { valueAsNumber: true })}
-            onBlur={handleFieldBlur}
-            aria-describedby="establishedYear-error"
-          />
-          {errors.establishedYear && (
-            <p id="establishedYear-error" className="text-sm text-red-600 flex items-center gap-1">
-              <AlertCircle className="h-4 w-4" />
-              {errors.establishedYear.message}
-            </p>
-          )}
-        </div>
+        {/* Tahun berdiri akan diminta di step parameter operasional */}
       </div>
 
       {/* Informasi Kontak Organisasi */}
       <div className="border-t pt-6">
         <h4 className="text-md font-medium text-gray-900 mb-4">Informasi Kontak Organisasi</h4>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="flex items-center gap-2 font-medium">
-              Telepon Organisasi <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="021-12345678 atau 081234567890"
-              {...register('phone')}
-              onBlur={handleFieldBlur}
-              aria-describedby="phone-error"
-            />
-            {errors.phone && (
-              <p id="phone-error" className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                {errors.phone.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2 font-medium">
-              Email Organisasi <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="info@sppganda.org"
-              {...register('email')}
-              onBlur={handleFieldBlur}
-              aria-describedby="email-error"
-            />
-            {errors.email && (
-              <p id="email-error" className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-4 w-4" />
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-        </div>
+        {/* Kontak organisasi akan diminta di step alamat bersama dengan data lokasi */}
       </div>
 
       <div className="space-y-2">
@@ -694,15 +799,20 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                 <Label htmlFor="picPosition" className="text-sm font-medium text-gray-700">
                   Jabatan *
                 </Label>
-                <Input
+                <select
                   id="picPosition"
-                  type="text"
-                  placeholder="Contoh: Kepala SPPG, Koordinator Gizi"
                   {...register('picPosition')}
                   onBlur={handleFieldBlur}
-                  className="mt-1"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   aria-describedby="picPosition-error"
-                />
+                >
+                  <option value="">Pilih Jabatan</option>
+                  {STAFF_POSITION_VALUES.map((position) => (
+                    <option key={position} value={position}>
+                      {STAFF_POSITIONS[position]}
+                    </option>
+                  ))}
+                </select>
                 {errors.picPosition && (
                   <p id="picPosition-error" className="mt-1 text-sm text-red-600" role="alert">
                     {errors.picPosition.message}
@@ -792,13 +902,24 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                         <SelectValue placeholder="Pilih Provinsi" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="31">DKI Jakarta</SelectItem>
-                        <SelectItem value="32">Jawa Barat</SelectItem>
-                        <SelectItem value="33">Jawa Tengah</SelectItem>
-                        <SelectItem value="34">DI Yogyakarta</SelectItem>
-                        <SelectItem value="35">Jawa Timur</SelectItem>
-                        <SelectItem value="36">Banten</SelectItem>
-                        {/* Add more provinces as needed */}
+                        {loadingRegions.provinces ? (
+                          <SelectItem value="__loading_provinces__" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat provinsi...</span>
+                            </div>
+                          </SelectItem>
+                        ) : provinces.length > 0 ? (
+                          provinces.map((province) => (
+                            <SelectItem key={province.id} value={province.id}>
+                              {province.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Tidak ada data provinsi</span>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
@@ -833,24 +954,28 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                         <SelectValue placeholder="Pilih Kabupaten/Kota" />
                       </SelectTrigger>
                       <SelectContent>
-                        {watch('provinceId') === '31' && (
-                          <>
-                            <SelectItem value="3171">Jakarta Selatan</SelectItem>
-                            <SelectItem value="3172">Jakarta Timur</SelectItem>
-                            <SelectItem value="3173">Jakarta Pusat</SelectItem>
-                            <SelectItem value="3174">Jakarta Barat</SelectItem>
-                            <SelectItem value="3175">Jakarta Utara</SelectItem>
-                          </>
+                        {!watch('provinceId') ? (
+                          <SelectItem value="__select_province_first__" disabled>
+                            <span>Pilih provinsi terlebih dahulu</span>
+                          </SelectItem>
+                        ) : loadingRegions.regencies ? (
+                          <SelectItem value="__loading_regencies__" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat kabupaten/kota...</span>
+                            </div>
+                          </SelectItem>
+                        ) : regencies.length > 0 ? (
+                          regencies.map((regency) => (
+                            <SelectItem key={regency.id} value={regency.id}>
+                              {regency.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Tidak ada data kabupaten/kota</span>
+                          </SelectItem>
                         )}
-                        {watch('provinceId') === '32' && (
-                          <>
-                            <SelectItem value="3273">Bandung</SelectItem>
-                            <SelectItem value="3204">Bandung</SelectItem>
-                            <SelectItem value="3276">Depok</SelectItem>
-                            <SelectItem value="3201">Bogor</SelectItem>
-                          </>
-                        )}
-                        {/* Add more regencies based on selected province */}
                       </SelectContent>
                     </Select>
                   )}
@@ -884,15 +1009,28 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                         <SelectValue placeholder="Pilih Kecamatan" />
                       </SelectTrigger>
                       <SelectContent>
-                        {watch('regencyId') === '3171' && (
-                          <>
-                            <SelectItem value="317101">Jagakarsa</SelectItem>
-                            <SelectItem value="317102">Pasar Minggu</SelectItem>
-                            <SelectItem value="317103">Cilandak</SelectItem>
-                            <SelectItem value="317104">Pesanggrahan</SelectItem>
-                          </>
+                        {!watch('regencyId') ? (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Pilih kabupaten/kota terlebih dahulu</span>
+                          </SelectItem>
+                        ) : loadingRegions.districts ? (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat kecamatan...</span>
+                            </div>
+                          </SelectItem>
+                        ) : districts.length > 0 ? (
+                          districts.map((district) => (
+                            <SelectItem key={district.id} value={district.id}>
+                              {district.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Tidak ada data kecamatan</span>
+                          </SelectItem>
                         )}
-                        {/* Add more districts based on selected regency */}
                       </SelectContent>
                     </Select>
                   )}
@@ -922,15 +1060,28 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                         <SelectValue placeholder="Pilih Desa/Kelurahan" />
                       </SelectTrigger>
                       <SelectContent>
-                        {watch('districtId') === '317101' && (
-                          <>
-                            <SelectItem value="31710101">Jagakarsa</SelectItem>
-                            <SelectItem value="31710102">Tanjung Barat</SelectItem>
-                            <SelectItem value="31710103">Lenteng Agung</SelectItem>
-                            <SelectItem value="31710104">Ciganjur</SelectItem>
-                          </>
+                        {!watch('districtId') ? (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Pilih kecamatan terlebih dahulu</span>
+                          </SelectItem>
+                        ) : loadingRegions.villages ? (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat desa/kelurahan...</span>
+                            </div>
+                          </SelectItem>
+                        ) : villages.length > 0 ? (
+                          villages.map((village) => (
+                            <SelectItem key={village.id} value={village.id}>
+                              {village.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__disabled_option__" disabled>
+                            <span>Tidak ada data desa/kelurahan</span>
+                          </SelectItem>
                         )}
-                        {/* Add more villages based on selected district */}
                       </SelectContent>
                     </Select>
                   )}
@@ -986,34 +1137,13 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
               </div>
 
               <div>
-                <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">
-                  Kode Pos *
-                </Label>
-                <Input
-                  id="postalCode"
-                  type="text"
-                  placeholder="12345"
-                  {...register('postalCode')}
-                  onBlur={handleFieldBlur}
-                  className="mt-1"
-                  maxLength={5}
-                  aria-describedby="postalCode-error"
-                />
-                {errors.postalCode && (
-                  <p id="postalCode-error" className="mt-1 text-sm text-red-600" role="alert">
-                    {errors.postalCode.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
                 <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                  Nomor Telepon SPPG *
+                  Nomor Telepon Utama *
                 </Label>
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="021-12345678"
+                  placeholder="021-12345678 atau 081234567890"
                   {...register('phone')}
                   onBlur={handleFieldBlur}
                   className="mt-1"
@@ -1028,12 +1158,12 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
 
               <div>
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email SPPG *
+                  Email Utama *
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="kontak@sppg.org"
+                  placeholder="info@sppganda.org"
                   {...register('email')}
                   onBlur={handleFieldBlur}
                   className="mt-1"
@@ -1141,7 +1271,7 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
 
               <div>
                 <Label htmlFor="establishedYear" className="text-sm font-medium text-gray-700">
-                  Tahun Berdiri *
+                  Tahun Berdiri SPPG *
                 </Label>
                 <Input
                   id="establishedYear"
@@ -1399,6 +1529,16 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
               </motion.div>
             </AnimatePresence>
 
+            {/* Debug Info - will remove later */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-gray-100 p-4 rounded-lg mb-4 text-xs">
+                <strong>Debug Info - Step {currentStep}:</strong>
+                <br />Valid: {currentStepValidation.isValid ? '✅' : '❌'}
+                <br />Missing Fields: {currentStepValidation.missingFields.join(', ') || 'None'}
+                <br />Progress: {currentStepValidation.progress}%
+              </div>
+            )}
+
             {/* Navigation */}
             <div className="flex justify-between pt-8 border-t border-gray-200">
               <div className="flex gap-3">
@@ -1433,12 +1573,18 @@ export function RegistrationFormStep({ onNext, onBack }: RegistrationFormStepPro
                       console.log('[DEBUG] Next Step button clicked!', {
                         currentStep,
                         isValid: currentStepValidation.isValid,
-                        validation: currentStepValidation
+                        validation: currentStepValidation,
+                        formValues: getValues(),
+                        watchedValues: watchedValues
                       })
                       handleNextStep()
                     }}
                     disabled={!currentStepValidation.isValid}
-                    className="flex items-center gap-2 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className={`flex items-center gap-2 px-8 ${
+                      currentStepValidation.isValid 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700' 
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
                     {currentStep === FORM_STEPS.length ? 'Lanjut ke Konfirmasi' : 'Step Selanjutnya'}
                     <ArrowRight className="h-4 w-4" />

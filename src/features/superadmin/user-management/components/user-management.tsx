@@ -105,9 +105,7 @@ const UserManagement = React.memo(function UserManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-        <UserStatsCards stats={stats} />
-      </div>
+      <UserStatsCards stats={stats} />
 
       {/* Filters */}
       <UserFilters

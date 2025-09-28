@@ -292,6 +292,7 @@ model User {
   // Relations
   sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: SetNull)
   userRoles       UserRole[] // Many-to-many dengan Role
+  emailVerifications EmailVerification[] // Email verification tokens
   
   // New Relations
   notifications   Notification[]
@@ -318,6 +319,31 @@ model User {
   @@index([sppgId])
   @@index([userType])
   @@map("users")
+}
+
+// ================================ EMAIL VERIFICATION SYSTEM ================================
+
+model EmailVerification {
+  id          String        @id @default(cuid())
+  token       String        @unique
+  email       String
+  userId      String?       // Optional, for registered users
+  type        String        @default("EMAIL_VERIFICATION") // EMAIL_VERIFICATION, PASSWORD_RESET, EMAIL_CHANGE
+  expiresAt   DateTime
+  isUsed      Boolean       @default(false)
+  usedAt      DateTime?
+  
+  // Relations
+  user        User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  @@index([token])
+  @@index([email])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verifications")
 }
 
 // ================================ MARKETING MODELS ================================
@@ -2257,11 +2283,11 @@ model FileAttachment {
   
   // Metadata
   description     String?
-  uploadedBy      String
+  uploadedBy      String?
   sppgId          String?
   
   // Relations
-  uploader        User @relation(fields: [uploadedBy], references: [id])
+  uploader        User? @relation(fields: [uploadedBy], references: [id])
   sppg            SPPG? @relation(fields: [sppgId], references: [id], onDelete: Cascade)
   
   createdAt       DateTime @default(now())
@@ -2324,12 +2350,15 @@ model Feedback {
 model Province {
   id              String @id // Official government ID
   name            String
-  code            String @unique
+  code            String @unique // Government official code
+  lookupCode      String @unique @default("") // For API lookups (e.g., "31")
   
   regencies       Regency[]
   sppg            SPPG[] @relation("SPPGProvince")
   schools         School[] @relation("SchoolProvince")
   
+  @@index([lookupCode])
+  @@index([code])
   @@map("provinces")
 }
 
@@ -2337,7 +2366,8 @@ model Regency {
   id              String @id // Official government ID
   provinceId      String
   name            String
-  code            String @unique
+  code            String @unique // Government official code
+  lookupCode      String @unique @default("") // For API lookups (e.g., "3101")
   type            String // "KABUPATEN" or "KOTA"
   
   province        Province @relation(fields: [provinceId], references: [id])
@@ -2346,6 +2376,8 @@ model Regency {
   schools         School[] @relation("SchoolRegency")
   
   @@index([provinceId])
+  @@index([lookupCode])
+  @@index([code])
   @@map("regencies")
 }
 
@@ -2353,7 +2385,8 @@ model District {
   id              String @id // Official government ID
   regencyId       String
   name            String
-  code            String @unique
+  code            String @unique // Government official code
+  lookupCode      String @unique @default("") // For API lookups (e.g., "310101")
   
   regency         Regency @relation(fields: [regencyId], references: [id])
   villages        Village[]
@@ -2361,6 +2394,8 @@ model District {
   schools         School[] @relation("SchoolDistrict")
   
   @@index([regencyId])
+  @@index([lookupCode])
+  @@index([code])
   @@map("districts")
 }
 
@@ -2368,13 +2403,16 @@ model Village {
   id              String @id // Official government ID
   districtId      String
   name            String
-  code            String @unique
+  code            String @unique // Government official code
+  lookupCode      String @unique @default("") // For API lookups (e.g., "3101011001")
   
   district        District @relation(fields: [districtId], references: [id])
   sppg            SPPG[] @relation("SPPGVillage")
   schools         School[] @relation("SchoolVillage")
   
   @@index([districtId])
+  @@index([lookupCode])
+  @@index([code])
   @@map("villages")
 }
 

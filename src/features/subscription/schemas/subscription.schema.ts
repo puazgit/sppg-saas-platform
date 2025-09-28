@@ -38,9 +38,19 @@ export const registrationDataSchema = z.object({
     .min(3, 'Nama PIC minimal 3 karakter')
     .max(100, 'Nama PIC maksimal 100 karakter'),
   
-  picPosition: z.string()
-    .min(3, 'Posisi PIC minimal 3 karakter')
-    .max(100, 'Posisi PIC maksimal 100 karakter'),
+  picPosition: z.enum([
+    'SPPG_MANAGER',
+    'PRODUCTION_SUPERVISOR', 
+    'HEAD_CHEF',
+    'ASSISTANT_CHEF',
+    'DISTRIBUTION_COORDINATOR',
+    'DRIVER',
+    'INVENTORY_ADMIN',
+    'QUALITY_CONTROL',
+    'FIELD_STAFF'
+  ], {
+    message: 'Jabatan PIC harus dipilih dari daftar yang tersedia'
+  }),
   
   picEmail: z.string()
     .email('Format email PIC tidak valid')
@@ -111,6 +121,17 @@ export const registrationDataSchema = z.object({
     .default('18:00').optional(),
   operationalDays: z.enum(['MONDAY_TO_FRIDAY', 'MONDAY_TO_SATURDAY', 'DAILY', 'CUSTOM'])
     .default('MONDAY_TO_FRIDAY').optional(),
+  
+
+
+  // Authentication
+  password: z.string()
+    .min(8, 'Password minimal 8 karakter')
+    .max(100, 'Password maksimal 100 karakter')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password harus mengandung huruf kecil, huruf besar, dan angka'),
+  
+  // Package Selection
+  selectedPackageId: z.string().min(1, 'Paket berlangganan wajib dipilih'),
   
   // Additional Enterprise Metadata
   city: z.string().min(2, 'Nama kota minimal 2 karakter').max(100, 'Nama kota maksimal 100 karakter'),

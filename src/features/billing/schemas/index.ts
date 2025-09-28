@@ -13,15 +13,32 @@ export const SppgRegistrationSchema = z.object({
     message: 'Jenis organisasi harus dipilih'
   }),
   address: z.string().min(10, 'Alamat minimal 10 karakter').max(200, 'Alamat maksimal 200 karakter'),
-  city: z.string().min(2, 'Nama kota minimal 2 karakter').max(50, 'Nama kota maksimal 50 karakter'),
-  province: z.string().min(2, 'Nama provinsi minimal 2 karakter').max(50, 'Nama provinsi maksimal 50 karakter'),
+  
+  // Location menggunakan ID sesuai Prisma schema
+  provinceId: z.string().min(1, 'Provinsi wajib dipilih'),
+  regencyId: z.string().min(1, 'Kabupaten/Kota wajib dipilih'),
+  districtId: z.string().min(1, 'Kecamatan wajib dipilih'),
+  villageId: z.string().min(1, 'Desa/Kelurahan wajib dipilih'),
+  
   postalCode: z.string().min(5, 'Kode pos minimal 5 digit').max(10, 'Kode pos maksimal 10 digit'),
   phone: z.string().min(10, 'Nomor telepon minimal 10 digit').max(15, 'Nomor telepon maksimal 15 digit'),
   email: z.string().email('Format email tidak valid'),
   
   // Data PIC
   picName: z.string().min(3, 'Nama PIC minimal 3 karakter').max(50, 'Nama PIC maksimal 50 karakter'),
-  picPosition: z.string().min(3, 'Jabatan PIC minimal 3 karakter').max(50, 'Jabatan PIC maksimal 50 karakter'),
+  picPosition: z.enum([
+    'SPPG_MANAGER',
+    'PRODUCTION_SUPERVISOR', 
+    'HEAD_CHEF',
+    'ASSISTANT_CHEF',
+    'DISTRIBUTION_COORDINATOR',
+    'DRIVER',
+    'INVENTORY_ADMIN',
+    'QUALITY_CONTROL',
+    'FIELD_STAFF'
+  ], {
+    message: 'Jabatan PIC harus dipilih dari daftar yang tersedia'
+  }),
   picPhone: z.string().min(10, 'Nomor telepon PIC minimal 10 digit').max(15, 'Nomor telepon PIC maksimal 15 digit'),
   picEmail: z.string().email('Format email PIC tidak valid'),
   

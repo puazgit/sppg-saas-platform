@@ -5,7 +5,7 @@
 
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -35,43 +35,55 @@ interface BankAccount {
   color: string
 }
 
-const BANK_ACCOUNTS: BankAccount[] = [
-  {
-    id: 'bca',
-    bankName: 'Bank BCA',
-    accountNumber: '1234567890',
-    accountName: 'PT SPPG PLATFORM INDONESIA',
-    bankCode: '014',
-    color: 'bg-blue-600'
-  },
-  {
-    id: 'mandiri',
-    bankName: 'Bank Mandiri',
-    accountNumber: '9876543210',
-    accountName: 'PT SPPG PLATFORM INDONESIA',
-    bankCode: '008',
-    color: 'bg-yellow-600'
-  },
-  {
-    id: 'bni',
-    bankName: 'Bank BNI',
-    accountNumber: '5555666777',
-    accountName: 'PT SPPG PLATFORM INDONESIA',
-    bankCode: '009',
-    color: 'bg-orange-600'
-  }
-]
-
 export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymentMethodStepProps) {
-  const { selectedPackage, setSubscriptionId, subscriptionId } = useSubscriptionStore()
+  const { selectedPackage, subscriptionId, resetState } = useSubscriptionStore()
   const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null)
   const [proofFile, setProofFile] = useState<File | null>(null)
   const [transferNote, setTransferNote] = useState('')
   const [transferAmount, setTransferAmount] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [loadingBanks, setLoadingBanks] = useState(false)
+
+  // Load bank accounts from API
+  useEffect(() => {
+    const fetchBankAccounts = async () => {
+      setLoadingBanks(true)
+      try {
+        const response = await fetch('/api/billing/payment/bank-accounts')
+        const data = await response.json()
+        if (data.success) {
+          setBankAccounts(data.bankAccounts || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch bank accounts:', error)
+      } finally {
+        setLoadingBanks(false)
+      }
+    }
+
+    fetchBankAccounts()
+  }, [])
   const [transferDate, setTransferDate] = useState('')
   const [copiedAccount, setCopiedAccount] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Validate required data when component mounts
+  React.useEffect(() => {
+    console.log('[Payment Step] Component mounted, validating data:', {
+      hasSubscriptionId: !!subscriptionId,
+      hasSelectedPackage: !!selectedPackage,
+      subscriptionId,
+      packageName: selectedPackage?.name
+    })
+
+    if (!subscriptionId || !selectedPackage) {
+      console.warn('[Payment Step] Missing required data, redirecting to start')
+      alert('Data tidak lengkap. Akan kembali ke langkah awal.')
+      resetState()
+      window.location.reload()
+    }
+  }, [subscriptionId, selectedPackage, resetState])
 
   // Calculate pricing
   const isYearly = false // Get from store if needed
@@ -132,8 +144,34 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
       return
     }
     
-    if (!transferAmount || parseInt(transferAmount.replace(/\D/g, '')) !== total) {
-      alert(`Jumlah transfer harus sesuai dengan total pembayaran: ${formatCurrency(total)}`)
+    // Clean and parse the input amount
+    const cleanInput = transferAmount.replace(/\D/g, '')
+    const inputAmount = parseInt(cleanInput)
+    
+    console.log('[Payment] Amount validation debug:', {
+      transferAmount: transferAmount,
+      cleanInput: cleanInput,
+      inputAmount: inputAmount,
+      total: total,
+      totalType: typeof total,
+      inputType: typeof inputAmount,
+      match: inputAmount === total,
+      selectedPackage: selectedPackage
+    })
+    
+    // More flexible validation - allow small differences due to rounding
+    if (!transferAmount) {
+      alert('Silakan masukkan jumlah transfer')
+      return
+    }
+    
+    if (isNaN(inputAmount) || inputAmount <= 0) {
+      alert('Jumlah transfer tidak valid')
+      return
+    }
+    
+    if (Math.abs(inputAmount - total) > 1) { // Allow 1 rupiah difference for rounding
+      alert(`Jumlah transfer harus sesuai dengan total pembayaran: ${formatCurrency(total)}\nAnda memasukkan: ${formatCurrency(inputAmount)}\n\nGunakan tombol "Isi Otomatis" untuk mengisi nominal yang tepat.`)
       return
     }
     
@@ -143,13 +181,25 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
     }
 
     if (!subscriptionId) {
-      alert('ID subscription tidak ditemukan. Silakan mulai dari awal.')
+      console.error('[Payment] Subscription ID not found, redirecting to start')
+      alert('ID subscription tidak ditemukan. Akan kembali ke langkah awal.')
+      
+      // Reset state and go to step 1
+      const { resetState } = useSubscriptionStore.getState()
+      resetState()
+      
+      // Reload page to start fresh
+      window.location.reload()
       return
     }
 
     setIsUploading(true)
 
     try {
+      console.log('[Payment] Starting upload process...')
+      console.log('[Payment] Subscription ID:', subscriptionId)
+      console.log('[Payment] Proof file:', proofFile?.name, proofFile?.size)
+      
       // Prepare form data
       const formData = new FormData()
       formData.append('paymentProof', proofFile)
@@ -158,19 +208,45 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
       formData.append('transferDate', transferDate)
       formData.append('transferNote', transferNote)
 
+      console.log('[Payment] Form data prepared:', {
+        bankAccount: `${selectedBank.bankName} - ${selectedBank.accountNumber}`,
+        transferAmount: transferAmount.replace(/\D/g, ''),
+        transferDate,
+        transferNote
+      })
+
       // Upload payment proof
+      console.log('[Payment] Sending upload request...')
       const response = await fetch(`/api/subscription/${subscriptionId}/payment-proof`, {
         method: 'POST',
         body: formData,
       })
 
-      const result = await response.json()
+      console.log('[Payment] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
+      const responseText = await response.text()
+      console.log('[Payment] Raw response:', responseText)
+      
+      let result
+      try {
+        result = JSON.parse(responseText)
+        console.log('[Payment] Parsed result:', result)
+      } catch (parseError) {
+        console.error('[Payment] JSON parse error:', parseError)
+        throw new Error(`Invalid server response: ${responseText}`)
+      }
 
       if (!response.ok || !result.success) {
+        console.error('[Payment] Upload failed:', result)
         throw new Error(result.error || 'Failed to upload payment proof')
       }
 
-      console.log('Payment proof uploaded successfully:', result)
+      console.log('[Payment] Payment proof uploaded successfully:', result)
+      console.log('[Payment] Proceeding to next step...')
       onNext()
       
     } catch (error) {
@@ -270,7 +346,14 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
                   1. Pilih Bank Tujuan Transfer
                 </Label>
                 <div className="grid gap-3">
-                  {BANK_ACCOUNTS.map((bank) => (
+                  {loadingBanks ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Loader className="h-4 w-4 animate-spin" />
+                        <span>Memuat rekening bank...</span>
+                      </div>
+                    </div>
+                  ) : bankAccounts.map((bank) => (
                     <div
                       key={bank.id}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -333,14 +416,36 @@ export default function SimplePaymentMethodStep({ onNext, onBack }: SimplePaymen
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="transferAmount">Jumlah Transfer *</Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="transferAmount">Jumlah Transfer *</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const formattedAmount = formatInputCurrency(total.toString())
+                          console.log('[Payment] Auto-fill clicked:', {
+                            total,
+                            formattedAmount,
+                            willSet: formattedAmount
+                          })
+                          setTransferAmount(formattedAmount)
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-xs h-auto p-1"
+                      >
+                        Isi Otomatis ({formatCurrency(total)})
+                      </Button>
+                    </div>
                     <Input
                       id="transferAmount"
                       value={transferAmount}
                       onChange={(e) => handleAmountChange(e.target.value)}
-                      placeholder={`Contoh: ${formatCurrency(total).replace('Rp ', '')}`}
+                      placeholder={`Contoh: ${formatInputCurrency(total.toString())}`}
                       className="font-mono"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Gunakan titik (.) sebagai pemisah ribuan. Contoh: 2.500.000
+                    </p>
                   </div>
                   
                   <div>

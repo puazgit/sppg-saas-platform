@@ -11,10 +11,10 @@ import { existsSync } from 'fs'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const subscriptionId = params.id
+    const { id: subscriptionId } = await params
     const formData = await request.formData()
     
     const file = formData.get('paymentProof') as File
@@ -50,14 +50,7 @@ export async function POST(
 
     // Check if subscription exists
     const subscription = await prisma.subscription.findUnique({
-      where: { id: subscriptionId },
-      include: {
-        invoices: {
-          where: { status: 'PENDING' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        }
-      }
+      where: { id: subscriptionId }
     })
 
     if (!subscription) {
@@ -67,7 +60,15 @@ export async function POST(
       )
     }
 
-    const pendingInvoice = subscription.invoices[0]
+    // Find pending invoice for this subscription's SPPG
+    const pendingInvoice = await prisma.invoice.findFirst({
+      where: { 
+        sppgId: subscription.sppgId,
+        status: 'PENDING' 
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    
     if (!pendingInvoice) {
       return NextResponse.json(
         { success: false, error: 'No pending invoice found' },
@@ -107,7 +108,7 @@ export async function POST(
           entityId: pendingInvoice.id,
           category: 'payment_proof',
           description: `Payment proof for invoice ${pendingInvoice.invoiceNumber}`,
-          uploadedBy: 'system', // TODO: Get actual user ID when auth is implemented
+          // uploadedBy: null, // Will be filled when user authentication is implemented
           sppgId: subscription.sppgId,
         }
       })

@@ -14,8 +14,14 @@ interface ExtendedSppgData {
   sppgName: string
   sppgType: string
   address: string
-  city: string
-  province: string
+  
+  // Location menggunakan ID sesuai Prisma schema
+  provinceId: string
+  regencyId: string
+  districtId: string
+  villageId: string
+  
+  postalCode: string
   phone: string
   email: string
   picName: string
@@ -31,9 +37,14 @@ interface ExtendedSppgData {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('[API] Received subscription request:', JSON.stringify(body, null, 2))
     
     // Validate request data
     const validation = validateCreateSubscriptionRequest(body)
+    console.log('[API] Validation result:', { 
+      success: validation.success, 
+      error: validation.success ? null : validation.error.issues 
+    })
     if (!validation.success) {
       return NextResponse.json(
         { 
@@ -59,31 +70,81 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create SPPG organization
+    // Import dynamic config - NO HARDCODE!
+    const { APP_CONFIG } = await import('@/lib/app-config')
+
+    // Validate region IDs exist
+    const province = await prisma.province.findUnique({
+      where: { id: sppgData.provinceId }
+    })
+
+    if (!province) {
+      return NextResponse.json(
+        { success: false, error: 'Province tidak ditemukan' },
+        { status: 400 }
+      )
+    }
+
+    const regency = await prisma.regency.findUnique({
+      where: { id: sppgData.regencyId }
+    })
+
+    if (!regency) {
+      return NextResponse.json(
+        { success: false, error: 'Kabupaten/Kota tidak ditemukan' },
+        { status: 400 }
+      )
+    }
+
+    const district = await prisma.district.findUnique({
+      where: { id: sppgData.districtId }
+    })
+
+    if (!district) {
+      return NextResponse.json(
+        { success: false, error: 'Kecamatan tidak ditemukan' },
+        { status: 400 }
+      )
+    }
+
+    const village = await prisma.village.findUnique({
+      where: { id: sppgData.villageId }
+    })
+
+    // If regency not found, use first regency in the province
+    if (!village) {
+      return NextResponse.json(
+        { success: false, error: 'Desa/Kelurahan tidak ditemukan' },
+        { status: 400 }
+      )
+    }
+    
+    // Create SPPG organization with dynamic values and valid regional IDs
     const sppg = await prisma.sPPG.create({
       data: {
-        code: `SPPG-${Date.now()}`, // Generate unique code
+        code: APP_CONFIG.generators.generateUniqueCode('SPPG'),
         name: sppgData.sppgName,
         description: `SPPG ${sppgData.sppgType} - ${sppgData.sppgName}`,
         address: sppgData.address,
         phone: sppgData.phone,
         email: sppgData.email,
-        // PIC Fields (required by new schema)
-        picName: sppgData.picName || 'Admin',
-        picPosition: sppgData.picPosition || 'Manager',
-        picEmail: sppgData.picEmail || sppgData.email,
-        picPhone: sppgData.picPhone || sppgData.phone,
+        // PIC Fields (required by new schema) - NO DEFAULTS!
+        picName: sppgData.picName,
+        picPosition: sppgData.picPosition,
+        picEmail: sppgData.picEmail,
+        picPhone: sppgData.picPhone,
         picWhatsapp: (sppgData as ExtendedSppgData).picWhatsapp,
         organizationType: (sppgData as ExtendedSppgData).organizationType || 'YAYASAN',
         establishedYear: (sppgData as ExtendedSppgData).establishedYear || new Date().getFullYear(),
         targetRecipients: sppgData.estimatedRecipients,
-        maxRadius: 10.0, // Default 10km radius
-        maxTravelTime: 60, // Default 60 minutes
+        maxRadius: APP_CONFIG.calculations.calculateOptimalRadius(sppgData.estimatedRecipients),
+        maxTravelTime: APP_CONFIG.calculations.calculateOptimalTravelTime(sppgData.estimatedRecipients),
         operationStartDate: new Date(),
-        provinceId: sppgData.province,
-        regencyId: sppgData.city, // Assuming city is regencyId
-        districtId: "default-district", // Default value
-        villageId: "default-village", // Default value
+        // Regional IDs - menggunakan ID yang sudah divalidasi
+        provinceId: sppgData.provinceId,
+        regencyId: sppgData.regencyId,
+        districtId: sppgData.districtId,
+        villageId: sppgData.villageId,
         status: 'PENDING_APPROVAL',
       },
     })
@@ -157,10 +218,11 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Generate payment instructions
+    // Generate payment instructions with APP_CONFIG
     const paymentInstructions = generatePaymentInstructions(
-      paymentData.paymentMethod,
-      totalAmount
+      paymentData.paymentMethod, 
+      subscriptionPackage.monthlyPrice, 
+      APP_CONFIG
     )
 
     return NextResponse.json({
@@ -173,17 +235,78 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Create subscription error:', error)
+    
+    // More detailed error handling
+    if (error instanceof Error) {
+      // Check if it's a Prisma error
+      if ('code' in error) {
+        const prismaError = error as Error & { 
+          code?: string, 
+          meta?: { target?: string[] } 
+        }
+        
+        switch (prismaError.code) {
+          case 'P2002':
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: 'Data sudah ada (duplikasi)',
+                details: [`Field ${prismaError.meta?.target?.join(', ') || 'unknown'} sudah digunakan`]
+              },
+              { status: 400 }
+            )
+          case 'P2003':
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: 'Data terkait tidak ditemukan',
+                details: ['Package ID atau regional data tidak valid']
+              },
+              { status: 400 }
+            )
+          case 'P2025':
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: 'Record tidak ditemukan',
+                details: ['Subscription package tidak ditemukan']
+              },
+              { status: 404 }
+            )
+          default:
+            return NextResponse.json(
+              { 
+                success: false, 
+                error: 'Database error',
+                details: [prismaError.message || 'Unknown database error']
+              },
+              { status: 500 }
+            )
+        }
+      }
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Gagal membuat subscription',
+          details: [error.message]
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to create subscription' 
+        error: 'Unknown error occurred',
+        details: ['Terjadi kesalahan yang tidak diketahui']
       },
       { status: 500 }
     )
   }
 }
 
-function generatePaymentInstructions(method: string, amount: number) {
+function generatePaymentInstructions(method: string, amount: number, appConfig: typeof import('@/lib/app-config').APP_CONFIG) {
   switch (method) {
     case 'BANK_TRANSFER':
       return {
@@ -192,7 +315,7 @@ function generatePaymentInstructions(method: string, amount: number) {
         instructions: 'Transfer ke rekening berikut dan kirim bukti pembayaran via WhatsApp',
         bankDetails: {
           bankName: 'Bank Central Asia (BCA)',
-          accountNumber: '1234567890',
+          accountNumber: appConfig.generators.generateAccountNumber(), // Generate unique account number
           accountName: 'PT SPPG Solutions Indonesia',
         },
       }

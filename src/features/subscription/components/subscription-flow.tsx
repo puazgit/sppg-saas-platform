@@ -131,3 +131,5 @@ export default function SubscriptionFlow() {
     </div>
   )
 }
+
+export { SubscriptionFlow }

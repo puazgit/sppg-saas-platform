@@ -8,10 +8,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const subscriptionId = params.id
+    const { id: subscriptionId } = await params
     console.log(`[API] Getting subscription data for ID: ${subscriptionId}`)
 
     // If subscriptionId is demo or invalid, return mock data
@@ -84,7 +84,6 @@ export async function GET(
             tier: true,
             monthlyPrice: true,
             setupFee: true,
-            features: true,
           }
         },
 
@@ -121,9 +120,9 @@ export async function GET(
     // Format response data for SuccessStep
     const successData = {
       subscriptionId: subscription.id,
-      sppgId: subscription.sppg.code,
-      organizationName: subscription.sppg.name,
-      packageName: subscription.package.name,
+      sppgId: subscription.sppg?.code || '',
+      organizationName: subscription.sppg?.name || '',
+      packageName: subscription.package?.name || '',
       activationStatus: subscription.status,
       invoice: latestInvoice ? {
         id: latestInvoice.id,
@@ -134,7 +133,7 @@ export async function GET(
         status: latestInvoice.status,
       } : null,
       account: {
-        adminEmail: subscription.sppg.picEmail,
+        adminEmail: subscription.sppg?.picEmail || '',
         loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/sppg/login`,
         tempPassword: 'Welcome2024!', // TODO: Generate secure temp password
         setupRequired: subscription.status === 'TRIAL' || subscription.status === 'ACTIVE',

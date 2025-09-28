@@ -1,58 +1,116 @@
+/**
+ * PRISMA MASTER SEED FILE
+ * Orchestrator untuk se    console.log('📈 FINAL DATA COUNTS:')
+    console.log(`   🔑 Permissions: ${counts.permissions}`)
+    console.log(`   👥 Roles: ${counts.roles}`)
+    console.log(`   👤 Users: ${counts.users}`)
+    console.log(`   🔗 User Roles: ${counts.userRoles}`)
+    console.log(`   💳 Subscription Packages: ${counts.subscriptionPackages}`)
+    console.log(`   🏢 SPPG Organizations: ${counts.sppgOrganizations}`)
+    console.log(`   📋 Subscriptions: ${counts.subscriptions}`)
+    console.log(`   🗺️ Provinces: ${counts.provinces}`)
+    console.log(`   🏢 Regencies/Cities: ${counts.regencies}`)
+    console.log(`   🏘️ Districts: ${counts.districts}`)
+    console.log(`   🏠 Villages/Kelurahan: ${counts.villages}`)
+    console.log(`   📊 Staff Members: ${await prisma.staff.count()}`)
+    console.log(`   🏠 Facilities: ${await prisma.facility.count()}`)
+    console.log(`   📦 Ingredients: ${await prisma.ingredient.count()}`)
+    console.log(`   👨‍🍳 Daily Operations: ${await prisma.dailyOperation.count()}`)
+    console.log(`   🚚 Distributions: ${await prisma.distribution.count()}`)
+    console.log(`   👥 Beneficiaries: ${await prisma.beneficiary.count()}`)
+    console.log(`   🍽️ Menus: ${await prisma.menu.count()}`)
+    console.log(`   🧾 Recipes: ${await prisma.recipe.count()}`)
+    console.log(`   📊 Production Records: ${await prisma.production.count()}`)
+    console.log(`   🔄 Inventory Transactions: ${await prisma.inventoryTransaction.count()}`)
+    console.log(`   🛒 Procurement Records: ${await prisma.procurement.count()}`)g operations
+ * 
+ * Structure:
+ * - prisma/seed.ts (file ini) = Master orchestrator
+ * - prisma/seeds/{model}-seed.ts = Individual model seeds
+ */
+
 import { PrismaClient } from '@prisma/client'
-import { seedRBAC } from './seeds/rbac-seed'
-import { seedRegionalData, seedNotificationTemplates } from './seeds/regional-seed'
-import { runBasicSeed } from './seeds/basic-seed'
-import { seedStaffModule } from './seeds/staff-seed'
-import { seedHRSystem } from './seeds/hr-seed'
-import { seedSubscriptionPackages } from './seeds/marketing-seed'
-import { seedCaseStudies } from './seeds/case-studies-seed'
-import { seedMarketingModels } from './seeds/marketing-hero-seed'
+
+// Import all individual seeds
+import seedRoles from './seeds/roles-seed'
+import seedSubscriptions from './seeds/subscriptions-seed'
+import seedRegions from './seeds/regions-seed'
+import seedSuperAdmin from './seeds/superadmin-seed'
+import seedSampleSPPGs from './seeds/sample-sppg-seed'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Starting database seeding...')
+  console.log('🌱 STARTING COMPLETE SPPG PLATFORM SEEDING')
+  console.log('='.repeat(60))
   
   try {
-    // 1. Seed Regional Data (base data)
-    await seedRegionalData()
+    // 1. Basic system data
+    console.log('\n📊 PHASE 1: SYSTEM FOUNDATION')
+    await seedRoles()
+    await seedSubscriptions()
     
-    // 2. Seed RBAC System
-    await seedRBAC()
+    // 2. SuperAdmin user
+    console.log('\n📊 PHASE 2: PLATFORM ADMINISTRATOR')
+    await seedSuperAdmin()
     
-    // 3. Seed Notification Templates
-    await seedNotificationTemplates()
+    // 3. Geographic data  
+    console.log('\n📊 PHASE 3: GEOGRAPHIC DATA')
+    await seedRegions()
     
-    // 4. Seed Basic Nutrition & Package Data
-    await runBasicSeed()
+    // 4. Sample SPPG organizations
+    console.log('\n📊 PHASE 4: SAMPLE SPPG ORGANIZATIONS')
+    await seedSampleSPPGs()
     
-    // 5. Seed Staff Data
-    await seedStaffModule()
+    // Success summary
+    console.log('\n' + '='.repeat(60))
+    console.log('🎉 SEEDING COMPLETED SUCCESSFULLY!')
+    console.log()
     
-    // 6. Seed Complete HR System
-    await seedHRSystem()
+    // Verification counts
+    const counts = {
+      permissions: await prisma.permission.count(),
+      roles: await prisma.role.count(),
+      users: await prisma.user.count(),
+      userRoles: await prisma.userRole.count(),
+      subscriptionPackages: await prisma.subscriptionPackage.count(),
+      sppgOrganizations: await prisma.sPPG.count(),
+      subscriptions: await prisma.subscription.count(),
+      provinces: await prisma.province.count(),
+      regencies: await prisma.regency.count(),
+      districts: await prisma.district.count(),
+      villages: await prisma.village.count()
+    }
     
-    // 7. Seed Marketing Data (Subscription Packages)
-    await seedSubscriptionPackages()
+    console.log('📈 FINAL DATA COUNTS:')
+    console.log(`   � Permissions: ${counts.permissions}`)
+    console.log(`   �🔐 Roles: ${counts.roles}`)
+    console.log(`   👤 Users: ${counts.users}`)
+    console.log(`   🔗 User Roles: ${counts.userRoles}`)
+    console.log(`   💳 Subscription Packages: ${counts.subscriptionPackages}`)
+    console.log(`   🗺️ Provinces: ${counts.provinces}`)
+    console.log(`   🏢 Regencies/Cities: ${counts.regencies}`)
+    console.log(`   🏘️ Districts: ${counts.districts}`)
+    console.log(`   🏠 Villages/Kelurahan: ${counts.villages}`)
     
-    // 8. Seed Marketing Hero Features & Trust Indicators
-    await seedMarketingModels()
+    console.log()
+    console.log('✅ Database seeded successfully!')
+    console.log('🚀 SPPG Platform is ready for development!')
     
-    // 9. Seed Case Studies Data  
-    await seedCaseStudies()
-    
-    console.log('✅ Database seeding completed successfully!')
   } catch (error) {
-    console.error('❌ Error during seeding:', error)
+    console.error('❌ Seeding failed:', error)
     throw error
   }
 }
 
+// Execute seeding
 main()
   .catch((e) => {
-    console.error(e)
+    console.error('❌ Fatal seeding error:', e)
     process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
   })
+
+export default main

@@ -36,7 +36,17 @@ export default function SignInPage() {
           <LoginForm />
 
           <div className="mt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-            <p>Belum punya akun SPPG?</p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
+              <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                Akses Otomatis Berdasarkan Akun
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-300">
+                • SPPG Users → Dashboard SPPG<br/>
+                • SuperAdmin → Panel Administrator
+              </p>
+            </div>
+            
+            <p>Belum punya akun?</p>
             <Link 
               href="/#contact" 
               className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 hover:underline font-medium"

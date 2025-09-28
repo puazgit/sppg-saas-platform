@@ -9,26 +9,25 @@ import { PaymentData } from '../types/payment'
 import { RegistrationData } from '../schemas/subscription.schema'
 import { SubscriptionPackage } from '../services/subscription-api'
 
-// Helper functions for package upgrade
-const getMaxRecipientsByTier = (tier: string): number => {
-  const limits = { 'BASIC': 500, 'STANDARD': 2000, 'PRO': 10000, 'ENTERPRISE': 50000 }
-  return limits[tier as keyof typeof limits] || 500
+// Registration Result Interface
+interface RegistrationResult {
+  success: boolean
+  message?: string
+  error?: string
+  data?: {
+    sppgId: string
+    subscriptionId: string
+    userId: string
+    organizationName: string
+    email: string
+    verificationSent: boolean
+    trialEndDate: Date
+  }
 }
 
-const getMaxStaffByTier = (tier: string): number => {
-  const limits = { 'BASIC': 5, 'STANDARD': 15, 'PRO': 50, 'ENTERPRISE': 200 }
-  return limits[tier as keyof typeof limits] || 5
-}
+// All package limits now come from API database instead of hardcode functions
 
-const getMaxDistributionPointsByTier = (tier: string): number => {
-  const limits = { 'BASIC': 3, 'STANDARD': 10, 'PRO': 25, 'ENTERPRISE': 100 }
-  return limits[tier as keyof typeof limits] || 3
-}
-
-const getPricingByTier = (tier: string): number => {
-  const pricing = { 'BASIC': 125000, 'STANDARD': 250000, 'PRO': 500000, 'ENTERPRISE': 1000000 }
-  return pricing[tier as keyof typeof pricing] || 125000
-}
+// NO HARDCODE PRICING - Must get from database via selected package
 
 // Subscription State Interface
 interface SubscriptionState {
@@ -72,6 +71,9 @@ interface SubscriptionActions {
   updateRegistrationField: (field: keyof RegistrationData, value: unknown) => void
   setPaymentData: (data: PaymentData) => void
   setSubscriptionId: (id: string | null) => void
+  
+  // Registration
+  submitRegistration: () => Promise<RegistrationResult>
   
   // UI state
   setLoading: (loading: boolean) => void
@@ -158,33 +160,28 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
         },
 
         // Package upgrade handler
-        upgradePackage: (targetTier: string) => {
-          const { selectedPackage } = get()
-          
-          // Find the target package by tier
-          // This should integrate with your package API service
-          const mockUpgradePackage = {
-            ...selectedPackage,
-            tier: targetTier,
-            name: `SPPG ${targetTier}`,
-            displayName: targetTier,
-            maxRecipients: getMaxRecipientsByTier(targetTier),
-            maxStaff: getMaxStaffByTier(targetTier),
-            maxDistributionPoints: getMaxDistributionPointsByTier(targetTier),
-            monthlyPrice: getPricingByTier(targetTier),
-            hasAdvancedReporting: ['PRO', 'ENTERPRISE'].includes(targetTier),
-            hasAPIAccess: ['PRO', 'ENTERPRISE'].includes(targetTier),
-            hasNutritionAnalysis: ['STANDARD', 'PRO', 'ENTERPRISE'].includes(targetTier),
-            hasQualityControl: ['PRO', 'ENTERPRISE'].includes(targetTier),
-          } as SubscriptionPackage
-
-          set({ 
-            selectedPackage: mockUpgradePackage,
-            lastSaved: new Date()
-          }, false, 'upgradePackage')
-        },
-
-        setRegistrationData: (data: Partial<RegistrationData>) => {
+        upgradePackage: async (targetTier: string) => {
+          try {
+            // Fetch target package from API
+            const response = await fetch(`/api/subscription/packages?tier=${targetTier}`)
+            const data = await response.json()
+            
+            if (data.success && data.packages.length > 0) {
+              const targetPackage = data.packages[0]
+              
+              set({ 
+                selectedPackage: targetPackage,
+                error: null,
+              })
+            } else {
+              console.error('Failed to fetch target package:', data.error)
+              set({ error: 'Gagal memuat paket target' })
+            }
+          } catch (error) {
+            console.error('Error upgrading package:', error)
+            set({ error: 'Terjadi kesalahan saat upgrade paket' })
+          }
+        },        setRegistrationData: (data: Partial<RegistrationData>) => {
           const { registrationData } = get()
           set({ 
             registrationData: { ...registrationData, ...data },
@@ -282,6 +279,80 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           }, false, 'clearDraft')
         },
 
+        // Registration submission
+        submitRegistration: async (): Promise<RegistrationResult> => {
+          const { registrationData, selectedPackage } = get()
+          
+          try {
+            set({ isLoading: true, error: null }, false, 'submitRegistration:start')
+            
+            // Validate required data
+            if (!selectedPackage) {
+              const error = 'Paket berlangganan belum dipilih'
+              set({ isLoading: false, error }, false, 'submitRegistration:error')
+              return { success: false, error }
+            }
+
+            // Combine registration data with package selection
+            const submissionData = {
+              ...registrationData,
+              selectedPackageId: selectedPackage.id
+            }
+
+            // Submit to API
+            const response = await fetch('/api/subscription/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(submissionData)
+            })
+
+            const result = await response.json()
+
+            if (!response.ok || !result.success) {
+              const errorMessage = result.error || 'Gagal melakukan registrasi'
+              set({ 
+                isLoading: false, 
+                error: errorMessage,
+                validationErrors: result.details || {}
+              }, false, 'submitRegistration:error')
+              
+              return { 
+                success: false, 
+                error: errorMessage 
+              }
+            }
+
+            // Success - update state
+            set({
+              isLoading: false,
+              error: null,
+              validationErrors: {},
+              subscriptionId: result.data?.subscriptionId,
+              completedSteps: [...get().completedSteps, get().currentStep].filter((step, index, arr) => arr.indexOf(step) === index)
+            }, false, 'submitRegistration:success')
+
+            return {
+              success: true,
+              message: result.message,
+              data: result.data
+            }
+
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan jaringan'
+            set({ 
+              isLoading: false, 
+              error: errorMessage 
+            }, false, 'submitRegistration:catch')
+            
+            return { 
+              success: false, 
+              error: errorMessage 
+            }
+          }
+        },
+
         // Reset
         resetState: () => {
           set(initialState, false, 'resetState')
@@ -310,7 +381,8 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           completedSteps: state.completedSteps,
           isDraft: state.isDraft,
           lastSaved: state.lastSaved,
-          sessionId: state.sessionId
+          sessionId: state.sessionId,
+          subscriptionId: state.subscriptionId // PERSIST subscription ID!
         })
       }
     ),
@@ -374,6 +446,7 @@ export const useSubscriptionActions = () => {
     setRegistrationData: store.setRegistrationData,
     updateRegistrationField: store.updateRegistrationField,
     setPaymentData: store.setPaymentData,
+    submitRegistration: store.submitRegistration,
     setLoading: store.setLoading,
     setError: store.setError,
     clearError: store.clearError,

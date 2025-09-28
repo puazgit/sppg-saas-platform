@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, UserType } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -191,7 +191,7 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
     select: { userType: true }
   })
 
-  return user?.userType === 'SUPERADMIN'
+  return user?.userType === UserType.SUPERADMIN
 }
 
 /**
@@ -236,16 +236,15 @@ export async function getUserWithRolesAndPermissions(userId: string) {
  * Create new SPPG dengan default roles
  */
 export async function createSppgWithDefaultRoles(sppgData: Parameters<typeof prisma.sPPG.create>[0]['data']) {
-  const { createSppgRoles } = await import('../../prisma/seeds/rbac-seed')
-  
   // Create SPPG
   const sppg = await prisma.sPPG.create({
     data: sppgData
   })
 
-  // Create default roles for this SPPG
-  await createSppgRoles(sppg.id)
-
+  // SPPG roles akan dibuat secara manual atau melalui admin interface
+  // Tidak perlu auto-create roles di sini karena roles sudah di-seed globally
+  // Admin SPPG akan assign roles ke users sesuai kebutuhan
+  
   return sppg
 }
 

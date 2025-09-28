@@ -101,7 +101,7 @@ export { default as PaymentProcessingStep } from './components/payment-processin
 export { default as SuccessStep } from './components/success-step'
 
 // Standalone components
-export { PackageSelector } from './components/package-selector'
+// export { PackageSelector } from './components/package-selector' // Component not created yet
 
 // Schemas for validation
 export {
