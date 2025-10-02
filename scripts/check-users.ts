@@ -19,7 +19,7 @@ async function checkUsers() {
           include: {
             subscription: {
               include: {
-                subscriptionPackage: true
+                package: true
               }
             }
           }
@@ -42,7 +42,7 @@ async function checkUsers() {
       if (user.userRoles.length > 0) {
         console.log(`   🎭 Roles:`)
         user.userRoles.forEach(userRole => {
-          console.log(`      - ${userRole.role.name} (${userRole.role.code})`)
+          console.log(`      - ${userRole.role.name}`)
         })
       } else {
         console.log(`   🎭 Roles: No roles assigned`)
@@ -54,8 +54,9 @@ async function checkUsers() {
         console.log(`   📍 Location: ${user.sppg.address}`)
         console.log(`   📊 Status: ${user.sppg.status}`)
         if (user.sppg.subscription) {
-          console.log(`   💳 Subscription: ${user.sppg.subscription.subscriptionPackage.name}`)
+          console.log(`   💳 Subscription: ${user.sppg.subscription.package?.name || 'No package'}`)
           console.log(`   💰 Status: ${user.sppg.subscription.status}`)
+          console.log(`   🎯 Tier: ${user.sppg.subscription.tier}`)
         }
       } else {
         console.log(`   🏢 SPPG: Not associated with any SPPG`)
@@ -65,16 +66,6 @@ async function checkUsers() {
 
     // Summary by role
     console.log(`\n📋 SUMMARY BY ROLE:`)
-    const roleCount = await prisma.userRole.groupBy({
-      by: ['roleId'],
-      _count: {
-        userId: true
-      },
-      include: {
-        role: true
-      }
-    })
-
     const roles = await prisma.role.findMany()
     
     for (const role of roles) {
